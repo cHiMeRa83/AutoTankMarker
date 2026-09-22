@@ -1,5 +1,5 @@
 ## AutoTankMarker
-[Download](https://github.com/cHiMeRa83/AutoTankMarker/releases/download/v1.3/AutoTankMarker-v1.3.zip)
+[Download]([https://github.com/cHiMeRa83/AutoTankMarker/archive/refs/tags/V1.3.zip))
 
 WoW 3.3.5a Addon für Heiler:
 - Automatische Tank-Markierung & Fokus-Setzung
