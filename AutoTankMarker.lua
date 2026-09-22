@@ -9,7 +9,7 @@ ATM_Settings = ATM_Settings or {
     drinkWhisper = true,  -- Whisper an Tank beim Trinken an/aus
     tankDeathSound = true,-- Sound & Warnung wenn Tank stirbt
     tankHealthAlert = true,-- Warnung bei < 25% Tank HP
-    tankDefAlert = true,  -- NEU: Warnung wenn Tank Def-CDs zündet
+    tankDefAlert = true,  -- Warnung wenn Tank Def-CDs zündet
     language = "DE"       -- Standard auf "DE" für Deutsch gesetzt
 }
 
@@ -20,6 +20,44 @@ local lastHealthAlert = 0
 local CHAT_ALERT_COOLDOWN = 10 
 local MANA_WHISPER_COOLDOWN = 30
 local currentTankUnit = nil
+
+-------------------------------------------------------------------------------
+-- WARNBALKEN (GUI FRAME)
+-------------------------------------------------------------------------------
+local warnFrame = CreateFrame("Frame", "ATMWarnFrame", UIParent)
+warnFrame:SetSize(380, 42)
+warnFrame:SetPoint("CENTER", UIParent, "CENTER", 0, 180)
+warnFrame:SetBackdrop({
+    bgFile = "Interface\\Buttons\\WHITE8X8",
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    tile = false, tileSize = 0, edgeSize = 14,
+    insets = { left = 3, right = 3, top = 3, bottom = 3 }
+})
+warnFrame:Hide()
+
+local warnText = warnFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
+warnText:SetPoint("CENTER", warnFrame, "CENTER", 0, 0)
+
+local warnTimer = 0
+warnFrame:SetScript("OnUpdate", function(self, elapsed)
+    if warnTimer > 0 then
+        warnTimer = warnTimer - elapsed
+        if warnTimer <= 0 then
+            self:Hide()
+        elseif warnTimer < 0.5 then
+            self:SetAlpha(warnTimer / 0.5) -- Sanftes Ausblenden
+        end
+    end
+end)
+
+local function ShowBannerMessage(message, r, g, b, duration)
+    warnText:SetText(message)
+    warnFrame:SetBackdropColor(r * 0.2, g * 0.2, b * 0.2, 0.85) -- Dunkler Hintergrund
+    warnFrame:SetBackdropBorderColor(r, g, b, 1.0)              -- Farbiger Rahmen
+    warnFrame:SetAlpha(1.0)
+    warnTimer = duration or 3.0
+    warnFrame:Show()
+end
 
 -- Liste großer Tank-Defensiv-Cooldowns (Spell ID -> { Name, Dauer })
 local TANK_DEF_SPELLS = {
@@ -38,23 +76,25 @@ local TANK_DEF_SPELLS = {
     [22812] = { name = "Baumrinde / Barkskin", duration = 12 }
 }
 
--- Übersetzungstexte
+-- Übersetzungstexte (Kompatibel mit dem WoW-Chat ohne Emojis)
 local L = {
     EN = {
-        aggro = "AGGRO ON HEALER! Help ",
-        oom = "OOM / Low Mana! Careful!",
-        drinking = "Is drinking (Mana: %d%%) - Please wait!",
+        aggroChat = "[AGGRO] >>> Aggro on Healer %s! Please taunt! <<<",
+        aggroScreen = ">>> AGGRO ON HEALER! <<<",
+        oom = "[ATM] OOM / Low Mana! Careful!",
+        drinking = "[ATM] Is drinking (Mana: %d%%) - Please wait!",
         tankDied = ">>> TANK DIED! <<<",
         tankLow = ">>> TANK LOW HEALTH (%d%%)! <<<",
-        defCD = ">>> TANK CD: %s (%ds) <<<"
+        defCD = "Tank CD: %s (%ds)"
     },
     DE = {
-        aggro = "AGGRO AUF HEILER! Hilfe ",
-        oom = "OOM / Wenig Mana! Vorsicht!",
-        drinking = "Trinkt gerade (Mana: %d%%) - Bitte warten!",
+        aggroChat = "[AGGRO] >>> Aggro auf Heiler %s! Bitte abspotten! <<<",
+        aggroScreen = ">>> AGGRO AUF HEILER! <<<",
+        oom = "[ATM] OOM / Wenig Mana! Vorsicht!",
+        drinking = "[ATM] Trinkt gerade (Mana: %d%%) - Bitte warten!",
         tankDied = ">>> TANK GESTORBEN! <<<",
         tankLow = ">>> TANK WENIG LEBEN (%d%%)! <<<",
-        defCD = ">>> TANK CD: %s (%ds) <<<"
+        defCD = "Tank CD: %s (%ds)"
     }
 }
 
@@ -139,22 +179,46 @@ local function FindAndMarkTank()
     end
 end
 
--- Aggro-Prüfung
+-- Aggro-Prüfung (Verlässlicher All-in-One Scan für 3.3.5a)
 local function CheckThreatStatus()
     if not ATM_Settings.aggroAlert or not InCombatLockdown() then return end
 
-    local isTanking, status = UnitDetailedThreatSituation("player", "target")
-    if not status then status = UnitThreatSituation("player") end
+    local hasAggro = false
 
-    if status and status >= 2 then
+    -- 1. Direktabfrage: Hat der Spieler generell Aggro?
+    local globalStatus = UnitThreatSituation("player")
+    if globalStatus and globalStatus >= 2 then
+        hasAggro = true
+    end
+
+    -- 2. Fallback: Detaillierte Abfragen auf typische Gegner-Units
+    if not hasAggro then
+        local unitsToScan = { "focustarget", "target", "targettarget", "mouseover" }
+        for _, unit in ipairs(unitsToScan) do
+            if UnitExists(unit) and UnitCanAttack("player", unit) then
+                local _, status = UnitDetailedThreatSituation("player", unit)
+                if status and status >= 2 then
+                    hasAggro = true
+                    break
+                end
+            end
+        end
+    end
+
+    -- Alarm auslösen
+    if hasAggro then
         local now = GetTime()
         if (now - lastChatAlert) > CHAT_ALERT_COOLDOWN then
             lastChatAlert = now
             PlaySound("RaidWarning")
-            UIErrorsFrame:AddMessage(">>> AGGRO ON YOU! <<<", 1.0, 0.0, 0.0, 1.0, 3)
-
+            
             local lang = ATM_Settings.language or "DE"
-            local text = L[lang].aggro .. UnitName("player") .. "!"
+            
+            -- Warnbalken Anzeige (Roter Balken)
+            ShowBannerMessage(L[lang].aggroScreen, 1.0, 0.1, 0.1, 3.5)
+
+            -- Chat-Anzeige
+            local text = string.format(L[lang].aggroChat, UnitName("player"))
             local chatType = GetNumRaidMembers() > 0 and "RAID" or (GetNumPartyMembers() > 0 and "PARTY" or nil)
             if chatType then SendChatMessage(text, chatType) end
         end
@@ -213,17 +277,57 @@ local function CheckStatus()
                 if (now - lastHealthAlert) > 10 then
                     lastHealthAlert = now
                     PlaySoundFile("Sound\\Interface\\RaidWarning.wav")
-                    UIErrorsFrame:AddMessage(string.format(L[lang].tankLow, pct), 1.0, 0.2, 0.2, 1.0, 3)
+                    ShowBannerMessage(string.format(L[lang].tankLow, pct), 1.0, 0.3, 0.0, 3.0)
                 end
             end
         end
     end
 end
 
+-- TESTER FUNKTION (Zeigt den neuen Warnbalken)
+local function RunTestMode()
+    local lang = ATM_Settings.language or "DE"
+    DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM TEST]|r Starte Test mit neuem Warnbalken...")
+
+    -- 1. Aggro Simulation (Roter Balken)
+    PlaySound("RaidWarning")
+    ShowBannerMessage(L[lang].aggroScreen, 1.0, 0.1, 0.1, 2.5)
+    
+    local text = string.format(L[lang].aggroChat, UnitName("player"))
+    local chatType = GetNumRaidMembers() > 0 and "RAID" or (GetNumPartyMembers() > 0 and "PARTY" or nil)
+    
+    if chatType then 
+        SendChatMessage(text, chatType) 
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM TEST]|r Aggro-Meldung gesendet an: " .. chatType)
+    else
+        DEFAULT_CHAT_FRAME:AddMessage("|cffffd100[ATM TEST]|r Einzeltest - Chat-Text wäre: " .. text)
+    end
+
+    -- 2. Simulation weiterer Warnbalken
+    local testTimer = CreateFrame("Frame")
+    local step = 0
+    testTimer:SetScript("OnUpdate", function(self, elapsed)
+        step = step + elapsed
+        if step > 2.0 and step < 2.1 then
+            -- Defensiv CD Test (Grüner Balken)
+            ShowBannerMessage(string.format(L[lang].defCD, "Schildwall", 12), 0.0, 1.0, 0.2, 2.5)
+        elseif step > 4.0 and step < 4.1 then
+            -- Tank Low Health Test (Orangener Balken)
+            ShowBannerMessage(string.format(L[lang].tankLow, 18), 1.0, 0.4, 0.0, 2.5)
+        elseif step > 6.0 and step < 6.1 then
+            -- Tank Tod Test (Dunkelroter Balken)
+            ShowBannerMessage(L[lang].tankDied, 0.8, 0.0, 0.0, 3.0)
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM TEST]|r Balken-Test abgeschlossen!")
+            self:SetScript("OnUpdate", nil)
+        end
+    end)
+end
+
 -- Events
 frame:RegisterEvent("PARTY_MEMBERS_CHANGED")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
 frame:RegisterEvent("UNIT_THREAT_LIST_UPDATE")
+frame:RegisterEvent("PLAYER_REGEN_DISABLED")
 frame:RegisterEvent("UNIT_AURA")
 frame:RegisterEvent("UNIT_HEALTH")
 frame:RegisterEvent("UNIT_MANA")
@@ -232,7 +336,7 @@ frame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 frame:SetScript("OnEvent", function(self, event, ...)
     local lang = ATM_Settings.language or "DE"
     
-    if event == "UNIT_THREAT_LIST_UPDATE" then
+    if event == "UNIT_THREAT_LIST_UPDATE" or event == "PLAYER_REGEN_DISABLED" then
         CheckThreatStatus()
     elseif event == "UNIT_AURA" or event == "UNIT_HEALTH" or event == "UNIT_MANA" then
         CheckStatus()
@@ -243,7 +347,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
         if ATM_Settings.tankDeathSound and currentTankUnit then
             if subEvent == "UNIT_DIED" and destGUID == UnitGUID(currentTankUnit) then
                 PlaySoundFile("Sound\\Interface\\RaidWarning.wav")
-                UIErrorsFrame:AddMessage(L[lang].tankDied, 1.0, 0.0, 0.0, 1.0, 4)
+                ShowBannerMessage(L[lang].tankDied, 0.8, 0.0, 0.0, 4.0)
             end
         end
 
@@ -252,7 +356,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
             if sourceGUID == UnitGUID(currentTankUnit) and TANK_DEF_SPELLS[spellID] then
                 local cdInfo = TANK_DEF_SPELLS[spellID]
                 PlaySound("3337") -- Interface-Sound
-                UIErrorsFrame:AddMessage(string.format(L[lang].defCD, cdInfo.name, cdInfo.duration), 0.0, 1.0, 0.0, 1.0, 3)
+                ShowBannerMessage(string.format(L[lang].defCD, cdInfo.name, cdInfo.duration), 0.0, 1.0, 0.2, 3.5)
             end
         end
     else
@@ -364,8 +468,10 @@ SlashCmdList["AUTOTANK"] = function(msg)
     if cmd == "config" or cmd == "opt" or cmd == "options" then
         InterfaceOptionsFrame_OpenToCategory(optionsPanel)
         InterfaceOptionsFrame_OpenToCategory(optionsPanel)
+    elseif cmd == "test" then
+        RunTestMode()
     else
         FindAndMarkTank()
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM]|r Tank-Suche ausgeführt. Tippe |cffffxx00/atm config|r für Einstellungen.")
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM]|r Tank-Suche ausgeführt. Tippe |cffffd100/atm config|r für Einstellungen oder |cffffd100/atm test|r zum Testen.")
     end
 end

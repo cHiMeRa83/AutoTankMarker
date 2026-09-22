@@ -2,7 +2,7 @@
 ## Title: AutoTankMarker
 ## Notes: Markiert den Tank, setzt Fokus und warnt bei Aggro, Low Mana, Tank-Tod & Tank Def-CDs.
 ## Author: Mark
-## Version: 1.4
+## Version: 1.5
 ## SavedVariables: ATM_Settings
 
 AutoTankMarker.lua
