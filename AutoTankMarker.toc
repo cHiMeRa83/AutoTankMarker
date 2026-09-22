@@ -1,8 +1,8 @@
 ## Interface: 30300
 ## Title: AutoTankMarker
-## Notes: Markiert automatisch den Tank, setzt Fokus und warnt bei Aggro/Low Mana/Tank-Tod.
+## Notes: Markiert den Tank, setzt Fokus und warnt bei Aggro, Low Mana, Tank-Tod & Tank Def-CDs.
 ## Author: Mark
-## Version: 1.3
+## Version: 1.4
 ## SavedVariables: ATM_Settings
 
 AutoTankMarker.lua
