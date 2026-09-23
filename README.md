@@ -1,8 +1,15 @@
 # 🛡️ AutoTankMarker (ATM)
 
-> **Ein unverzichtbares Tool für Heiler in World of Warcraft: Wrath of the Lich King (Patch 3.3.5a)**
+![Version](https://img.shields.io/badge/Version-v1.62-blue.svg)
+![WoW Version](https://img.shields.io/badge/WoW-3.3.5a-orange.svg)
 
-AutoTankMarker (ATM) erleichtert Heilern die Arbeit in Dungeons und Raids enorm. Es identifiziert automatisch den Tank deiner Gruppe, markiert ihn mit einem Zielsymbol, überwacht Bedrohung (Aggro), warnt vor verfehlten Spotts, zeigt aktive Defensiv-Cooldowns an und informiert über den Status des Tanks sowie dein eigenes Mana.
+> **Ein unverzichtbares Utility-Tool für Heiler in World of Warcraft: Wrath of the Lich King (Patch 3.3.5a)**
+
+[![Download Latest Release](https://img.shields.io/badge/📥_Download-Neueste_Version_(v1.62)-brightgreen?style=for-the-badge&logo=github)](https://github.com/cHiMeRa83/AutoTankMarker/releases/latest)
+
+---
+
+AutoTankMarker (ATM) erleichtert Heilern die Arbeit in Dungeons und Raids enorm. Es identifiziert automatisch den Tank deiner Gruppe, markiert ihn mit einem Zielsymbol, überwacht Bedrohung (Aggro), zeigt aktive Defensiv-Cooldowns an und informiert über den Status des Tanks sowie dein eigenes Mana.
 
 ---
 
@@ -13,16 +20,13 @@ AutoTankMarker (ATM) erleichtert Heilern die Arbeit in Dungeons und Raids enorm.
   * Markiert den Tank automatisch mit einem wählbaren Zielsymbol (Standard: Blaues Quadrat).
 
 * 📊 **Dynamische Tank-Aggro % Leiste:**
-  * Zeigt die prozentuale Bedrohung des Tanks in Echtzeit an (mit Farbwechsel: Grün = Sicher, Gelb = Achtung, Rot = Kritisch).
-  * Besitzt eine **Dual-Check-Engine**, die auch in Instanzen zuverlässig ohne direktes Mob-Target funktioniert.
-  * Frei verschiebbar mit dunklem Design und schwarzer Schriftkontur (`OUTLINE`) für beste Lesbarkeit.
+  * Zeigt die prozentuale Bedrohung des Tanks in Echtzeit an.
+  * Automatische Bedrohungs-Schnittstelle (`SetCVar("threatShowNumeric", 1)` beim Start), um die native Aggro-Übermittlung zu aktivieren.
 
 * 🛡️ **Defensiv-CD Tracker:**
-  * Informiert dich per Bildschirm-Banner und Sound, wenn der Tank eine große Überlebensfähigkeit zündet (*Schildwall, Letztes Gefecht, Göttlicher Schutz, Unermüdlicher Hüter, Eisige Gegenwehr, Vampirblut, Überlebensinstinkte, Baumrinde*).
-  * Erkennt Fähigkeiten verlässlicher über **Spell-IDs** und Sprachabgleiche (`DE` / `EN`).
-
-* ⚠️ **Spott-Fehlschlag Tracker (*Taunt Fail Alert*):**
-  * Warnt sofort mit einem Alarmsound und rotem Banner, wenn der Spott des Tanks (*Spott, Hand der Abrechnung, Todesgriff, Dunkler Befehl, Knurren*) verfehlt oder widerstanden wird.
+  * Informiert dich per Bildschirm-Banner und Sound, wenn der Tank eine große Überlebensfähigkeit zündet (*Schildwall, Letztes Gefecht, Göttlicher Schutz, Baumrinde etc.*).
+  * **Zwei-Wege-Erkennung:** Funktioniert sowohl über **Spell-IDs** als auch über deutsche und englische Zaubernamen (`DE` / `EN`).
+  * Überwacht zeitgleich `SPELL_CAST_SUCCESS` und `SPELL_AURA_APPLIED`.
 
 * 🚨 **Heiler-Aggro & Status-Warnungen:**
   * **Heiler-Aggro:** Schlägt Alarm (Sound & Banner) und sendet bei Bedarf eine automatische Warnung an den Gruppen-/Raid-Chat, wenn Gegner dich angreifen.
@@ -37,14 +41,14 @@ AutoTankMarker (ATM) erleichtert Heilern die Arbeit in Dungeons und Raids enorm.
 | :--- | :--- |
 | `/atm` / `/autotank` | Führt eine manuelle Tank-Suche aus und markiert den Tank. |
 | `/atm config` | Öffnet das grafische Einstellungsmenü. |
-| `/atm test` | Startet den Testmodus (simuliert Banner, Aggro-Leiste, Sounds & Chat-Meldungen). |
+| `/atm test` | Startet den Testmodus (simuliert Banner, Aggro-Leiste, Sounds & Chat-Meldungen für Defensiv-CDs). |
 
 ---
 
 ## ⚙️ Einstellungen (Interface-Menü)
 
 Über `/atm config` kannst du alle Optionen deinen Wünschen anpassen:
-* Checkboxen für alle einzelnen Warnmeldungen (Aggro, Def-CDs, Spott-Fehlschläge, Low-HP, Mana-Whisper etc.).
+* Checkboxen für alle einzelnen Warnmeldungen (Aggro, Def-CDs, Low-HP, Mana-Whisper etc.).
 * Freigabe der Aggro-Leiste zum Ziehen per Maus + Position zurücksetzen.
 * Auswahl des Zielsymbols (Stern, Kreis, Diamant, Dreieck, Mond, Quadrat, Kreuz, Totenkopf).
 * Umschaltung der Sprache für Chat-Meldungen & Warnungen (Deutsch / Englisch).
@@ -53,8 +57,8 @@ AutoTankMarker (ATM) erleichtert Heilern die Arbeit in Dungeons und Raids enorm.
 
 ## 💻 Installation
 
-1. Lade den Ordner `AutoTankMarker` herunter.
-2. Entpacke den Ordner in dein WoW-Verzeichnis:
+1. [Klicke hier, um Version 1.62 herunterzuladen](https://github.com/cHiMeRa83/AutoTankMarker/releases/latest).
+2. Entpacke den heruntergeladenen Ordner in dein WoW-Verzeichnis:
    `World of Warcraft\Interface\AddOns\`
 3. Stelle sicher, dass der Ordnerpfad wie folgt aussieht:
    `World of Warcraft\Interface\AddOns\AutoTankMarker\AutoTankMarker.lua`
