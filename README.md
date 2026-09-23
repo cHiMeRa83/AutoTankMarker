@@ -1,11 +1,11 @@
 # 🛡️ AutoTankMarker (ATM)
 
-![Version](https://img.shields.io/badge/Version-v1.7-blue.svg)
+![Version](https://img.shields.io/badge/Version-v1.7.1-blue.svg)
 ![WoW Version](https://img.shields.io/badge/WoW-3.3.5a-orange.svg)
 
 > **Ein unverzichtbares Utility-Tool für Heiler in World of Warcraft: Wrath of the Lich King (Patch 3.3.5a)**
 
-[![Download Latest Release](https://img.shields.io/badge/📥_Download-Neueste_Version_(v1.7)-brightgreen?style=for-the-badge&logo=github)](https://github.com/cHiMeRa83/AutoTankMarker/releases/latest)
+[![Download Latest Release](https://img.shields.io/badge/📥_Download-Neueste_Version_(v1.7.1)-brightgreen?style=for-the-badge&logo=github)](https://github.com/cHiMeRa83/AutoTankMarker/releases/latest)
 
 ---
 
@@ -40,6 +40,15 @@ AutoTankMarker (ATM) erleichtert Heilern die Arbeit in Dungeons und Raids enorm.
 
 ---
 
+## 🚀 Neu in Version v1.7.1 (Changelog)
+
+* 🎨 **Einheitliches "Tank gestorben"-Design:** Alle Leisten (Aggro & CD-Monitor) strahlen jetzt im selben edlen, dunklen Rot-Ton mit rotem Rahmen und gestochen scharfem weißem Text (`OUTLINE`).
+* 🛡️ **Erweiterte Dungeon-Erkennung:** Die Aggro-Leiste und der CD-Monitor greifen im Dungeon jetzt noch stabiler über alle verfügbaren Ziele (`target`, `targettarget`, Fokus, Ziel des Tanks).
+* 🕹️ **Verschiebbarer Warnbalken:** Neben den Leisten lässt sich ab sofort **auch der obere Warnbalken** ("Tank ist gestorben" etc.) im Einstellungsmodus frei per Drag & Drop auf dem Bildschirm positionieren und wird automatisch gespeichert.
+* ⚙️ **Bugfixes:** Fehler bei der Array-Initialisierung im Optionsmenü (Syntax-Fehler) behoben.
+
+---
+
 ## 🛠️ Befehle & Bedienung
 
 | Befehl | Beschreibung |
@@ -54,7 +63,7 @@ AutoTankMarker (ATM) erleichtert Heilern die Arbeit in Dungeons und Raids enorm.
 
 Über `/atm config` kannst du alle Optionen deinen Wünschen anpassen:
 * Checkboxen für alle Warnmeldungen, den CD-Monitor, Taunt-Swaps und den Interrupt-Tracker.
-* Freigabe und Positionierung der Aggro- und CD-Leisten per Maus (`Aggro-Leiste freigeben` + `Position zurücksetzen`).
+* Freigabe und Positionierung **aller Elemente** (Aggro-Leiste, CD-Monitor und Warnbalken) per Maus (*"Alle Elemente verschiebbar machen"* + *"Positionen zurücksetzen"*).
 * Auswahl des Zielsymbols (Stern, Kreis, Diamant, Dreieck, Mond, Quadrat, Kreuz, Totenkopf).
 * Umschaltung der Sprache für Chat-Meldungen & Warnungen (Deutsch / Englisch).
 
@@ -62,7 +71,7 @@ AutoTankMarker (ATM) erleichtert Heilern die Arbeit in Dungeons und Raids enorm.
 
 ## 💻 Installation
 
-1. [Klicke hier, um Version 1.7 herunterzuladen](https://github.com/cHiMeRa83/AutoTankMarker/releases/latest).
+1. [Klicke hier, um Version 1.7.1 herunterzuladen](https://github.com/cHiMeRa83/AutoTankMarker/releases/latest).
 2. Entpacke den heruntergeladenen Ordner in dein WoW-Verzeichnis:
    `World of Warcraft\Interface\AddOns\`
 3. Stelle sicher, dass der Ordnerpfad wie folgt aussieht:
