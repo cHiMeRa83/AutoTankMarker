@@ -1,49 +1,68 @@
 # 🛡️ AutoTankMarker (ATM)
-> Das ultimative WotLK 3.3.5a UI- & Utility-Addon für Tanks & Heiler.
 
-[![WoW Patch](https://img.shields.io/badge/WoW-3.3.5a-blue.svg)]()
-[![Version](https://img.shields.io/badge/Version-1.62-green.svg)]()
+> **Ein unverzichtbares Tool für Heiler in World of Warcraft: Wrath of the Lich King (Patch 3.3.5a)**
 
-📥 **[Download Latest Release](https://github.com/cHiMeRa83/AutoTankMarker/releases/latest)**
+AutoTankMarker (ATM) erleichtert Heilern die Arbeit in Dungeons und Raids enorm. Es identifiziert automatisch den Tank deiner Gruppe, markiert ihn mit einem Zielsymbol, überwacht Bedrohung (Aggro), warnt vor verfehlten Spotts, zeigt aktive Defensiv-Cooldowns an und informiert über den Status des Tanks sowie dein eigenes Mana.
 
 ---
 
-### ✨ Hauptfunktionen im Überblick
+## ✨ Hauptfunktionen
 
-* 🎯 **Automatische Tank-Markierung & Fokus:** Erkennt den Tank in Dungeons/Raids automatisch über Rollen oder Auren und setzt dein gewähltes Wunschsymbol sowie das Fokus-Ziel (`FocusUnit`).
-* 📊 **Live Tank-Aggro Prozentleiste & Native Threat-Schnittstelle:**
-  * **Echtzeit-Bedrohung:** Zeigt im Kampf exakt an, wie viel % Aggro der Tank auf sein aktuelles Ziel hat.
-  * **Dynamische Farbkodierung:** Wechselt fließend von 🟢 **Grün** (Sicher) zu 🟡 **Gelb** (Achtung) und 🔴 **Rot** (Kritisch).
-  * ⚙️ **Automatisches Threat-Enable:** Aktiviert beim Laden automatisch `threatShowNumeric`, um das Aggro-Tracking der WotLK-Engine nativ für alle Gruppenmitglieder und Namensschilder bereitzustellen.
-* ⚠️ **Aggro-Alarm:** Optischer & akustischer Warnbalken bei Heiler-Aggro inklusive automatischem Gruppen-/Raid-Ruf in Deutsch oder Englisch.
-* 💬 **Automatischer Tank-Whisper:** Benachrichtigt den Tank direkt, wenn du OOM gehst (< 15% Mana) oder dich zum Trinken hinsetzt.
-* 🚑 **Tank-HP & Tod-Warnungen:** Warnt dich sofort mit prominenten Bildschirm-Meldungen und Sounds, wenn der Tank unter 25% Leben fällt oder stirbt.
-* 🛡️ **Defensiv-CD Tracker:** Erkennt und meldet große Tank-Überlebensfähigkeiten (*Schildwall, Letztes Gefecht, Göttlicher Schutz, Eisige Gegenwehr etc.*).
-* ⚙️ **In-Game Einstellungsmenü (`/atm config`):**
-  * **Grafische Verwaltung:** Schalter für alle Features, Sprachauswahl (DE/EN) und Symbol-Dropdown.
-  * 🔓 **Aggro-Leiste freigeben:** Per Checkbox die Prozentleiste zum freien Verschieben einblenden oder Position per Klick zurücksetzen.
-  * 🔘 **Testmodus-Button:** Simulationstest aller Alarme und Leisten direkt per Button im Menü starten.
+* 🎯 **Automatische Tank-Erkennung & Markierung:**
+  * Erkennt Tanks anhand von Gruppenrollen, Klassen und aktiven Haltungen/Auren (*Verteidigungshaltung, Zorn des Gerechten, Bärenform, Frostpräsenz*).
+  * Markiert den Tank automatisch mit einem wählbaren Zielsymbol (Standard: Blaues Quadrat).
+
+* 📊 **Dynamische Tank-Aggro % Leiste:**
+  * Zeigt die prozentuale Bedrohung des Tanks in Echtzeit an (mit Farbwechsel: Grün = Sicher, Gelb = Achtung, Rot = Kritisch).
+  * Besitzt eine **Dual-Check-Engine**, die auch in Instanzen zuverlässig ohne direktes Mob-Target funktioniert.
+  * Frei verschiebbar mit dunklem Design und schwarzer Schriftkontur (`OUTLINE`) für beste Lesbarkeit.
+
+* 🛡️ **Defensiv-CD Tracker:**
+  * Informiert dich per Bildschirm-Banner und Sound, wenn der Tank eine große Überlebensfähigkeit zündet (*Schildwall, Letztes Gefecht, Göttlicher Schutz, Unermüdlicher Hüter, Eisige Gegenwehr, Vampirblut, Überlebensinstinkte, Baumrinde*).
+  * Erkennt Fähigkeiten verlässlicher über **Spell-IDs** und Sprachabgleiche (`DE` / `EN`).
+
+* ⚠️ **Spott-Fehlschlag Tracker (*Taunt Fail Alert*):**
+  * Warnt sofort mit einem Alarmsound und rotem Banner, wenn der Spott des Tanks (*Spott, Hand der Abrechnung, Todesgriff, Dunkler Befehl, Knurren*) verfehlt oder widerstanden wird.
+
+* 🚨 **Heiler-Aggro & Status-Warnungen:**
+  * **Heiler-Aggro:** Schlägt Alarm (Sound & Banner) und sendet bei Bedarf eine automatische Warnung an den Gruppen-/Raid-Chat, wenn Gegner dich angreifen.
+  * **Tank-Gesundheit:** Warnung bei kritischem Leben (< 25 %) und Audiosignal bei Tank-Tod.
+  * **Mana & Trinken:** Automatischer Flüstertext an den Tank, wenn dein Mana knapp ist (< 15 %) oder du gerade trinkst.
 
 ---
 
-### ⌨️ Slash-Befehle
+## 🛠️ Befehle & Bedienung
 
-| Befehl | Funktion |
+| Befehl | Beschreibung |
 | :--- | :--- |
-| `/atm` oder `/autotank` | Führt die Tank-Suche und das Markieren sofort manuell aus. |
-| `/atm config` oder `/atm opt` | Öffnet das Einstellungsmenü im Spiel. |
-| `/atm test` | Startet den Simulationstest aller Warnbalken und der Aggro-Leiste. |
-| `/atm skull` / `/atm cross` | Wechselt das Markierungssymbol direkt per Befehl auf Totenkopf oder Kreuz. |
+| `/atm` / `/autotank` | Führt eine manuelle Tank-Suche aus und markiert den Tank. |
+| `/atm config` | Öffnet das grafische Einstellungsmenü. |
+| `/atm test` | Startet den Testmodus (simuliert Banner, Aggro-Leiste, Sounds & Chat-Meldungen). |
 
 ---
 
-### 📦 Installation
-1. Lade die neueste Version über den Download-Link oben herunter.
-2. Entpacke die `.zip`-Datei in deinen WoW-Addon-Ordner: `World of Warcraft/Interface/AddOns/`
-3. Stelle sicher, dass der Pfad wie folgt aussieht: `Interface/AddOns/AutoTankMarker/AutoTankMarker.lua`
-4. Starte das Spiel neu oder gib im Spiel `/reload` ein.
+## ⚙️ Einstellungen (Interface-Menü)
+
+Über `/atm config` kannst du alle Optionen deinen Wünschen anpassen:
+* Checkboxen für alle einzelnen Warnmeldungen (Aggro, Def-CDs, Spott-Fehlschläge, Low-HP, Mana-Whisper etc.).
+* Freigabe der Aggro-Leiste zum Ziehen per Maus + Position zurücksetzen.
+* Auswahl des Zielsymbols (Stern, Kreis, Diamant, Dreieck, Mond, Quadrat, Kreuz, Totenkopf).
+* Umschaltung der Sprache für Chat-Meldungen & Warnungen (Deutsch / Englisch).
 
 ---
 
-### 📝 Changelog (v1.62)
-* **Neu:** Automatisches Aktivieren der internen Client-Variable `SetCVar("threatShowNumeric", 1)` beim Ladevorgang für lückenlose Aggro-Synchronisation in Instanzen & Raids.
+## 💻 Installation
+
+1. Lade den Ordner `AutoTankMarker` herunter.
+2. Entpacke den Ordner in dein WoW-Verzeichnis:
+   `World of Warcraft\Interface\AddOns\`
+3. Stelle sicher, dass der Ordnerpfad wie folgt aussieht:
+   `World of Warcraft\Interface\AddOns\AutoTankMarker\AutoTankMarker.lua`
+4. Starte World of Warcraft neu oder gib `/reload` im Spiel ein.
+
+---
+
+## 📝 Kompatibilität
+
+* **Spielversion:** World of Warcraft: Wrath of the Lich King (3.3.5a)
+* **Sprachen:** Deutsch (`DE`), Englisch (`EN`)
