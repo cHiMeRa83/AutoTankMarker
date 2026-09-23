@@ -1,8 +1,8 @@
 ## Interface: 30300
 ## Title: AutoTankMarker
-## Notes: Markiert den Tank, setzt Fokus und warnt bei Aggro, Low Mana, Tank-Tod & Tank Def-CDs.
+## Notes: Automatische Ziel-Markierungen, Threat-Bar, Heiler-Warnungen & Defensiv-CD Tracker fuer WotLK 3.3.5a
 ## Author: Mark
-## Version: 1.5
+## Version: 1.63
 ## SavedVariables: ATM_Settings
 
 AutoTankMarker.lua
