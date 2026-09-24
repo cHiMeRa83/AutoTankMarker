@@ -1,11 +1,11 @@
 # 🛡️ AutoTankMarker (ATM)
 
-![Version](https://img.shields.io/badge/Version-v1.7.3-blue.svg)
+![Version](https://img.shields.io/badge/Version-v1.7.4-blue.svg)
 ![WoW Version](https://img.shields.io/badge/WoW-3.3.5a-orange.svg)
 
 > **Ein unverzichtbares Utility-Tool für Heiler in World of Warcraft: Wrath of the Lich King (Patch 3.3.5a)**
 
-[![Download Latest Release](https://img.shields.io/badge/📥_Download-Neueste_Version_(v1.7.3)-brightgreen?style=for-the-badge&logo=github)](https://github.com/cHiMeRa83/AutoTankMarker/releases/latest)
+[![Download Latest Release](https://img.shields.io/badge/📥_Download-Neueste_Version_(v1.7.4)-brightgreen?style=for-the-badge&logo=github)](https://github.com/cHiMeRa83/AutoTankMarker/releases/latest)
 
 ---
 
@@ -38,10 +38,14 @@ AutoTankMarker (ATM) erleichtert Heilern die Arbeit in Dungeons und Raids enorm.
   * **Tank-Gesundheit:** Warnung bei kritischem Leben (< 25 %) und Audiosignal bei Tank-Tod.
   * **Mana & Trinken:** Automatischer Flüstertext an den Tank bei knappem Mana (< 15 %) oder wenn du trinkst.
 
+* 💾 **Permanente Einstellungsspeicherung:**
+  * Alle Konfigurationen, Slider-Werte, Fensterpositionen und Sound-Auswahlen werden dank sauberer `SavedVariables`-Einbindung dauerhaft im WTF-Ordner gespeichert und überstehen jeden `/reload` fehlerfrei.
+
 ---
 
-## 🚀 Neu in Version v1.7.3 (Changelog)
+## 🚀 Neu in Version v1.7.4 (Changelog)
 
+* 💾 **Permanente Speicherung:** Die Konfigurationsvariablen wurden über `SavedVariables` angebunden, sodass Einstellungen und Layout-Positionen nicht mehr zurückgesetzt werden.
 * 🎵 **Custom Sound Integration:** Volle Unterstützung für eigene `.wav`-Dateien (*Ack, Fart, Among Us*) via `PlaySoundFile` für Alarme und Interrupts.
 * 🎨 **UI & Layout Optimierungen:** Die Sound-Auswahlmenüs und Dropdowns im Einstellungsfenster wurden komplett neu angeordnet, verbreitert und passen sich nun perfekt in das Interface ein (kein Überlappen mehr).
 * 📏 **Aggro-Leiste & Skalierung:** Die Standard-Breite der Tank-Aggro-Ampelleiste wurde optimiert und lässt sich über den Regler im Menü nun flexibel bis zu **500px** anpassen.
@@ -74,7 +78,7 @@ AutoTankMarker (ATM) erleichtert Heilern die Arbeit in Dungeons und Raids enorm.
 
 ## 💻 Installation
 
-1. [Klicke hier, um Version 1.7.3 herunterzuladen](https://github.com/cHiMeRa83/AutoTankMarker/releases/latest).
+1. [Klicke hier, um Version v1.7.4 herunterzuladen](https://github.com/cHiMeRa83/AutoTankMarker/releases/latest).
 2. Entpacke den heruntergeladenen Ordner in dein WoW-Verzeichnis:
    `World of Warcraft\Interface\AddOns\`
 3. Stelle sicher, dass der Ordnerpfad wie folgt aussieht:
