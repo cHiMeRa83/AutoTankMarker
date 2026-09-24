@@ -1,11 +1,11 @@
 # 🛡️ AutoTankMarker (ATM)
 
-![Version](https://img.shields.io/badge/Version-v1.7.2-blue.svg)
+![Version](https://img.shields.io/badge/Version-v1.7.3-blue.svg)
 ![WoW Version](https://img.shields.io/badge/WoW-3.3.5a-orange.svg)
 
 > **Ein unverzichtbares Utility-Tool für Heiler in World of Warcraft: Wrath of the Lich King (Patch 3.3.5a)**
 
-[![Download Latest Release](https://img.shields.io/badge/📥_Download-Neueste_Version_(v1.7.2)-brightgreen?style=for-the-badge&logo=github)](https://github.com/cHiMeRa83/AutoTankMarker/releases/latest)
+[![Download Latest Release](https://img.shields.io/badge/📥_Download-Neueste_Version_(v1.7.3)-brightgreen?style=for-the-badge&logo=github)](https://github.com/cHiMeRa83/AutoTankMarker/releases/latest)
 
 ---
 
@@ -40,11 +40,12 @@ AutoTankMarker (ATM) erleichtert Heilern die Arbeit in Dungeons und Raids enorm.
 
 ---
 
-## 🚀 Neu in Version v1.7.2 (Changelog)
+## 🚀 Neu in Version v1.7.3 (Changelog)
 
-* 🎛️ **Minimap-Positionsregler in den Einstellungen:** Die Position des Minimap-Buttons lässt sich jetzt ganz bequem über einen Schieberegler (0–360°) im Einstellungsmenü anpassen (zusätzlich zum Befehl `/atm pos <Grad>`).
-* 🎨 **UI-Optimierungen:** Das Layout des Einstellungsfensters wurde weiter aufgeräumt (Sprachauswahl und Elemente wurden für ein harmonischeres Design etwas nach oben verschoben).
-* 🛠️ **Code-Optimierung:** Stabilität des Minimap-Buttons verbessert und Drag-&-Drop-Verhalten optimiert.
+* 🎵 **Custom Sound Integration:** Volle Unterstützung für eigene `.wav`-Dateien (*Ack, Fart, Among Us*) via `PlaySoundFile` für Alarme und Interrupts.
+* 🎨 **UI & Layout Optimierungen:** Die Sound-Auswahlmenüs und Dropdowns im Einstellungsfenster wurden komplett neu angeordnet, verbreitert und passen sich nun perfekt in das Interface ein (kein Überlappen mehr).
+* 📏 **Aggro-Leiste & Skalierung:** Die Standard-Breite der Tank-Aggro-Ampelleiste wurde optimiert und lässt sich über den Regler im Menü nun flexibel bis zu **500px** anpassen.
+* 👤 **Entwickler-Info:** Offizieller Entwickler-Credit für **cHiMeRa83** direkt im Titel des Einstellungsfensters eingepflegt.
 
 ---
 
@@ -63,7 +64,8 @@ AutoTankMarker (ATM) erleichtert Heilern die Arbeit in Dungeons und Raids enorm.
 
 Über `/atm config` kannst du alle Optionen deinen Wünschen anpassen:
 * Checkboxen für alle Warnmeldungen, den CD-Monitor, Taunt-Swaps und den Interrupt-Tracker.
-* Stufenlose Regler für Breiten, Schriftgröße und die **Minimap-Position**.
+* Stufenlose Regler für Breiten (bis zu 500px), Schriftgröße und die **Minimap-Position**.
+* Separate Tonauswahl für eigene Aggro, verlorene Tank-Aggro und erfolgreiche Interrupts.
 * Freigabe und Positionierung **aller Elemente** (Aggro-Leiste, CD-Monitor und Warnbalken) per Maus (*"Alle Elemente verschiebbar machen"* + *"Positionen zurücksetzen"*).
 * Auswahl des Zielsymbols (Stern, Kreis, Diamant, Dreieck, Mond, Quadrat, Kreuz, Totenkopf).
 * Umschaltung der Sprache für Chat-Meldungen & Warnungen (Deutsch / Englisch).
@@ -72,12 +74,14 @@ AutoTankMarker (ATM) erleichtert Heilern die Arbeit in Dungeons und Raids enorm.
 
 ## 💻 Installation
 
-1. [Klicke hier, um Version 1.7.2 herunterzuladen](https://github.com/cHiMeRa83/AutoTankMarker/releases/latest).
+1. [Klicke hier, um Version 1.7.3 herunterzuladen](https://github.com/cHiMeRa83/AutoTankMarker/releases/latest).
 2. Entpacke den heruntergeladenen Ordner in dein WoW-Verzeichnis:
    `World of Warcraft\Interface\AddOns\`
 3. Stelle sicher, dass der Ordnerpfad wie folgt aussieht:
    `World of Warcraft\Interface\AddOns\AutoTankMarker\AutoTankMarker.lua`
-4. Starte World of Warcraft neu oder gib `/reload` im Spiel ein.
+4. Platziere deine Custom-Sound-Dateien im passenden Ordner:
+   `World of Warcraft\Interface\AddOns\AutoTankMarker\Sounds\`
+5. Starte World of Warcraft neu oder gib `/reload` im Spiel ein.
 
 ---
 
