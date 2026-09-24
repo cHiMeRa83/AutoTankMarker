@@ -1,6 +1,6 @@
 local frame = CreateFrame("Frame")
 
--- Standard-Einstellungen (v1.7.3 by cHiMeRa83)
+-- Standard-Einstellungen (v1.7.4 by cHiMeRa83)
 local defaultSettings = {
     marker = 6,
     autoFocus = false,
@@ -33,15 +33,11 @@ local defaultSettings = {
     interruptSound = "Interface\\AddOns\\AutoTankMarker\\Sounds\\amongus.wav",
 }
 
--- Funktion zum Laden und Abgleichen der Einstellungen
-local function LoadSettings()
-    if not ATM_Settings then
-        ATM_Settings = {}
-    end
-    for k, v in pairs(defaultSettings) do
-        if ATM_Settings[k] == nil then
-            ATM_Settings[k] = v
-        end
+-- Sofortiges Laden und Absichern der Einstellungen (verhindert Nil-Fehler)
+ATM_Settings = ATM_Settings or {}
+for k, v in pairs(defaultSettings) do
+    if ATM_Settings[k] == nil then
+        ATM_Settings[k] = v
     end
 end
 
@@ -423,7 +419,7 @@ function RunTestMode()
     local lang = ATM_Settings.language or "DE"
     isTestingMode = true
     UpdateBarStyles()
-    DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM TEST]|r Starte Testmodus v1.7.3...")
+    DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM TEST]|r Starte Testmodus v1.7.4...")
 
     PlayCustomSound(ATM_Settings.alertSound)
     ShowBannerMessage(">>> AGGRO AUF HEILER! <<<", 1.0, 0.1, 0.1, 2.5)
@@ -699,7 +695,6 @@ frame:SetScript("OnEvent", function(self, event, ...)
     if event == "ADDON_LOADED" then
         local addonName = ...
         if addonName == "AutoTankMarker" then
-            LoadSettings() -- Hier werden die gespeicherten Einstellungen geladen!
             SetCVar("threatShowNumeric", 1)
             UpdateBarStyles()
             UpdateMinimapButtonPosition(ATM_Settings.minimapPos or 45)
@@ -775,7 +770,7 @@ optionsPanel.name = "AutoTankMarker"
 
 local title = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
 title:SetPoint("TOPLEFT", 16, -16)
-title:SetText("AutoTankMarker v1.7.3 - Einstellungen (Entwickler: cHiMeRa83)")
+title:SetText("AutoTankMarker v1.7.4 - Einstellungen (Entwickler: cHiMeRa83)")
 
 local function CreateCheckbox(name, labelText, yOffset, settingKey)
     local cb = CreateFrame("CheckButton", name, optionsPanel, "InterfaceOptionsCheckButtonTemplate")
@@ -1114,6 +1109,6 @@ SlashCmdList["AUTOTANK"] = function(msg)
         end
     else
         FindAndMarkTank()
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM v1.7.3]|r Tank-Suche ausgeführt. Tippe |cffffd100/atm config|r für Einstellungen.")
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM v1.7.4]|r Tank-Suche ausgeführt. Tippe |cffffd100/atm config|r für Einstellungen.")
     end
 end
