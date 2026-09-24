@@ -4,5 +4,6 @@
 ## Author: cHiMeRa83
 ## Version: 1.7
 ## SavedVariables: AutoTankMarkerDB
+## SavedVariables: ATM_Settings
 
 AutoTankMarker.lua

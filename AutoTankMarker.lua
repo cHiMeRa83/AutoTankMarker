@@ -1,7 +1,7 @@
 local frame = CreateFrame("Frame")
 
 -- Standard-Einstellungen (v1.7.3 by cHiMeRa83)
-ATM_Settings = ATM_Settings or {
+local defaultSettings = {
     marker = 6,
     autoFocus = false,
     aggroAlert = true,
@@ -32,6 +32,18 @@ ATM_Settings = ATM_Settings or {
     tankLostSound = "Interface\\AddOns\\AutoTankMarker\\Sounds\\fart.wav",
     interruptSound = "Interface\\AddOns\\AutoTankMarker\\Sounds\\amongus.wav",
 }
+
+-- Funktion zum Laden und Abgleichen der Einstellungen
+local function LoadSettings()
+    if not ATM_Settings then
+        ATM_Settings = {}
+    end
+    for k, v in pairs(defaultSettings) do
+        if ATM_Settings[k] == nil then
+            ATM_Settings[k] = v
+        end
+    end
+end
 
 local lastChatAlert = 0
 local lastManaWhisper = 0
@@ -687,6 +699,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
     if event == "ADDON_LOADED" then
         local addonName = ...
         if addonName == "AutoTankMarker" then
+            LoadSettings() -- Hier werden die gespeicherten Einstellungen geladen!
             SetCVar("threatShowNumeric", 1)
             UpdateBarStyles()
             UpdateMinimapButtonPosition(ATM_Settings.minimapPos or 45)
@@ -937,7 +950,7 @@ iconHeader:SetText("Tank-Symbol:")
 
 local iconDropdown = CreateFrame("Frame", "ATMIconDropdown", optionsPanel, "UIDropDownMenuTemplate")
 iconDropdown:SetPoint("TOPLEFT", 270, -62)
-UIDropDownMenu_SetWidth(iconDropdown, 200) -- Breiter gemacht
+UIDropDownMenu_SetWidth(iconDropdown, 200)
 local iconNames = { 
     [1] = "1 - Stern", 
     [2] = "2 - Kreis", 
@@ -970,7 +983,7 @@ soundHeader1:SetText("Sound: Eigene Aggro")
 
 local soundDropdown1 = CreateFrame("Frame", "ATMSoundDropdown1", optionsPanel, "UIDropDownMenuTemplate")
 soundDropdown1:SetPoint("TOPLEFT", 270, -132)
-UIDropDownMenu_SetWidth(soundDropdown1, 200) -- Extra breit
+UIDropDownMenu_SetWidth(soundDropdown1, 200)
 
 UIDropDownMenu_Initialize(soundDropdown1, function(self, level)
     for _, s in ipairs(AVAILABLE_SOUNDS) do
@@ -994,7 +1007,7 @@ soundHeader2:SetText("Sound: Tank Aggro verloren")
 
 local soundDropdown2 = CreateFrame("Frame", "ATMSoundDropdown2", optionsPanel, "UIDropDownMenuTemplate")
 soundDropdown2:SetPoint("TOPLEFT", 270, -192)
-UIDropDownMenu_SetWidth(soundDropdown2, 200) -- Extra breit
+UIDropDownMenu_SetWidth(soundDropdown2, 200)
 
 UIDropDownMenu_Initialize(soundDropdown2, function(self, level)
     for _, s in ipairs(AVAILABLE_SOUNDS) do
@@ -1018,7 +1031,7 @@ soundHeader3:SetText("Sound: Interrupt Erfolg")
 
 local soundDropdown3 = CreateFrame("Frame", "ATMSoundDropdown3", optionsPanel, "UIDropDownMenuTemplate")
 soundDropdown3:SetPoint("TOPLEFT", 270, -252)
-UIDropDownMenu_SetWidth(soundDropdown3, 200) -- Extra breit
+UIDropDownMenu_SetWidth(soundDropdown3, 200)
 
 UIDropDownMenu_Initialize(soundDropdown3, function(self, level)
     for _, s in ipairs(AVAILABLE_SOUNDS) do
