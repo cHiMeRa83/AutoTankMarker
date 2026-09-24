@@ -1,6 +1,6 @@
 local frame = CreateFrame("Frame")
 
--- Standard-Einstellungen (v1.7.2)
+-- Standard-Einstellungen (v1.7.3 by cHiMeRa83)
 ATM_Settings = ATM_Settings or {
     marker = 6,
     autoFocus = false,
@@ -16,9 +16,9 @@ ATM_Settings = ATM_Settings or {
     showTankSwap = true,
     showInterrupt = true,
     language = "DE",
-    threatWidth = 250,
+    threatWidth = 320,
     threatHeight = 26,
-    cdWidth = 250,
+    cdWidth = 320,
     cdHeight = 18,
     threatX = 0,
     threatY = -120,
@@ -28,6 +28,9 @@ ATM_Settings = ATM_Settings or {
     warnY = 180,
     minimapPos = 45,
     fontSize = 12,
+    alertSound = "Interface\\AddOns\\AutoTankMarker\\Sounds\\ack.wav",
+    tankLostSound = "Interface\\AddOns\\AutoTankMarker\\Sounds\\fart.wav",
+    interruptSound = "Interface\\AddOns\\AutoTankMarker\\Sounds\\amongus.wav",
 }
 
 local lastChatAlert = 0
@@ -40,6 +43,32 @@ local currentTankUnit = nil
 local isTestingMode = false
 local isUnlockedForMoving = false
 
+local AVAILABLE_SOUNDS = {
+    { name = "Ack (Eigene Aggro)", value = "Interface\\AddOns\\AutoTankMarker\\Sounds\\ack.wav", isFile = true },
+    { name = "Fart (Tank Aggro verloren)", value = "Interface\\AddOns\\AutoTankMarker\\Sounds\\fart.wav", isFile = true },
+    { name = "Among Us (Interrupt)", value = "Interface\\AddOns\\AutoTankMarker\\Sounds\\amongus.wav", isFile = true },
+    { name = "Raid Warning (Klassisch & Laut)", value = "RaidWarning", isFile = false },
+    { name = "Gong / Glocke", value = "Sound\\Doodad\\BellTollNightElf.wav", isFile = true },
+    { name = "Quest Abgeschlossen (Pling)", value = "Sound\\Interface\\QuestObjectiveComplete.wav", isFile = true },
+}
+
+local function PlayCustomSound(soundKey)
+    local sound = soundKey or "RaidWarning"
+    local isFile = false
+    for _, s in ipairs(AVAILABLE_SOUNDS) do
+        if s.value == sound then
+            isFile = s.isFile
+            break
+        end
+    end
+
+    if isFile then
+        PlaySoundFile(sound)
+    else
+        PlaySound(sound)
+    end
+end
+
 -------------------------------------------------------------------------------
 -- MINIMAP BUTTON ERSTELLUNG
 -------------------------------------------------------------------------------
@@ -51,20 +80,18 @@ minimapButton:SetMovable(true)
 minimapButton:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 minimapButton:RegisterForDrag("LeftButton")
 
--- Icon zentriert
 local icon = minimapButton:CreateTexture(nil, "BACKGROUND")
 icon:SetTexture("Interface\\Icons\\Ability_Warrior_ShieldBash")
 icon:SetSize(22, 22)
 icon:SetPoint("CENTER", minimapButton, "CENTER", 0, 0)
 
--- Hintergrund-Kreis
 local bg = minimapButton:CreateTexture(nil, "ARTWORK")
 bg:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
 bg:SetSize(26, 26)
 bg:SetPoint("CENTER", minimapButton, "CENTER", 0, 0)
 icon:SetDrawLayer("OVERLAY", 1)
 
-local sliderMinimapAngle -- Forward declaration for update reference
+local sliderMinimapAngle
 
 local function UpdateMinimapButtonPosition(angle)
     local x = cos(angle) * 80
@@ -100,7 +127,7 @@ minimapButton:SetScript("OnDragStop", function(self)
     self:UnlockHighlight()
 end)
 
-local RunTestMode -- Forward declaration
+local RunTestMode
 
 minimapButton:SetScript("OnClick", function(self, button)
     if button == "LeftButton" then
@@ -213,14 +240,14 @@ local function ShowBannerMessage(message, r, g, b, duration)
 end
 
 -------------------------------------------------------------------------------
--- TANK AGGRO PROZENT-LEISTE
+-- TANK AGGRO AMPEL-LEISTE
 -------------------------------------------------------------------------------
 local threatBar = CreateFrame("StatusBar", "ATMTankThreatBar", UIParent)
 threatBar:SetSize(ATM_Settings.threatWidth, ATM_Settings.threatHeight)
 threatBar:SetPoint("CENTER", UIParent, "CENTER", ATM_Settings.threatX, ATM_Settings.threatY)
 threatBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
 threatBar:SetMinMaxValues(0, 100)
-threatBar:SetValue(0)
+threatBar:SetValue(100)
 threatBar:Hide()
 
 threatBackdrop = CreateFrame("Frame", "ATMThreatBackdropFrame", threatBar)
@@ -264,7 +291,7 @@ threatBar:SetScript("OnUpdate", function(self, elapsed)
     if isTestingMode or isUnlockedForMoving then return end
 
     threatTimer = threatTimer + elapsed
-    if threatTimer > 0.1 then
+    if threatTimer > 0.2 then
         threatTimer = 0
         
         if not ATM_Settings.showTankThreatBar or not InCombatLockdown() then
@@ -272,54 +299,34 @@ threatBar:SetScript("OnUpdate", function(self, elapsed)
             return
         end
 
-        local mobUnit = nil
-        if UnitExists("target") and UnitCanAttack("player", "target") and not UnitIsDead("target") then
-            mobUnit = "target"
-        elseif UnitExists("targettarget") and UnitCanAttack("player", "targettarget") and not UnitIsDead("targettarget") then
-            mobUnit = "targettarget"
-        elseif currentTankUnit and UnitExists(currentTankUnit .. "target") and UnitCanAttack("player", currentTankUnit .. "target") and not UnitIsDead(currentTankUnit .. "target") then
-            mobUnit = currentTankUnit .. "target"
-        elseif UnitExists("focustarget") and UnitCanAttack("player", "focustarget") and not UnitIsDead("focustarget") then
-            mobUnit = "focustarget"
+        self:Show()
+        self:SetValue(100)
+
+        local hasAggro = false
+        local globalStatus = UnitThreatSituation("player")
+        if globalStatus and globalStatus >= 2 then 
+            hasAggro = true 
         end
 
-        local pct = nil
-        if mobUnit then
-            local _, _, threatpct = UnitDetailedThreatSituation("player", mobUnit)
-            if threatpct then
-                pct = math.floor(threatpct)
+        if not hasAggro then
+            local unitsToScan = { "target", "targettarget", "focustarget" }
+            for _, unit in ipairs(unitsToScan) do
+                if UnitExists(unit) and UnitCanAttack("player", unit) then
+                    local _, status = UnitDetailedThreatSituation("player", unit)
+                    if status and status >= 2 then
+                        hasAggro = true
+                        break
+                    end
+                end
             end
         end
 
-        if not pct or pct <= 0 then
-            local globalStatus = UnitThreatSituation("player")
-            if globalStatus and globalStatus > 0 then
-                if globalStatus == 3 then pct = 100
-                elseif globalStatus == 2 then pct = 90
-                elseif globalStatus == 1 then pct = 60
-                else pct = 30 end
-            end
-        end
-
-        if pct and pct > 0 then
-            self:Show()
-            self:SetValue(pct)
-            threatText:SetText(string.format("Tank Aggro: %d%%", pct))
-            threatText:SetTextColor(1.0, 1.0, 1.0, 1.0)
-
-            if pct >= 100 then
-                self:SetStatusBarColor(0.0, 0.8, 0.2) 
-            elseif pct >= 80 then
-                self:SetStatusBarColor(1.0, 0.8, 0.0) 
-            else
-                self:SetStatusBarColor(0.9, 0.1, 0.1) 
-            end
+        if hasAggro then
+            self:SetStatusBarColor(0.9, 0.1, 0.1)
+            threatText:SetText("Tank Aggro: VERLOREN (ACHTUNG!)")
         else
-            self:Show()
-            self:SetValue(20)
-            threatText:SetText("Tank Aggro: Aktiv")
-            threatText:SetTextColor(1.0, 1.0, 1.0, 1.0)
-            self:SetStatusBarColor(0.2, 0.6, 1.0)
+            self:SetStatusBarColor(0.0, 0.8, 0.2)
+            threatText:SetText("Tank Aggro: Sicher (OK)")
         end
     end
 end)
@@ -404,15 +411,15 @@ function RunTestMode()
     local lang = ATM_Settings.language or "DE"
     isTestingMode = true
     UpdateBarStyles()
-    DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM TEST]|r Starte Testmodus v1.7.2...")
+    DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM TEST]|r Starte Testmodus v1.7.3...")
 
-    PlaySound("RaidWarning")
+    PlayCustomSound(ATM_Settings.alertSound)
     ShowBannerMessage(">>> AGGRO AUF HEILER! <<<", 1.0, 0.1, 0.1, 2.5)
     
     threatBar:Show()
-    threatBar:SetValue(85)
-    threatBar:SetStatusBarColor(1.0, 0.8, 0.0)
-    threatText:SetText("Tank Aggro: 85% (Test)")
+    threatBar:SetValue(100)
+    threatBar:SetStatusBarColor(0.9, 0.1, 0.1)
+    threatText:SetText("Tank Aggro: VERLOREN (Test)")
 
     UpdateCDMonitorDisplay("TestTank", "Schildwall", 12)
 
@@ -421,16 +428,16 @@ function RunTestMode()
     testTimer:SetScript("OnUpdate", function(self, elapsed)
         step = step + elapsed
         if step > 2.5 and step < 2.6 then
-            threatBar:SetValue(100)
             threatBar:SetStatusBarColor(0.0, 0.8, 0.2)
-            threatText:SetText("Tank Aggro: 100%")
+            threatText:SetText("Tank Aggro: Sicher (OK)")
             ShowBannerMessage(">> Tank CD: Schildwall (12s) <<", 0.0, 1.0, 0.2, 2.5)
         elseif step > 5.0 and step < 5.1 then
+            PlayCustomSound(ATM_Settings.tankLostSound)
             ShowBannerMessage(">>> SPOTT VERFEHLT (Spott) auf Mob! <<<", 1.0, 0.0, 0.0, 2.5)
-            PlaySoundFile("Sound\\Interface\\RaidWarning.wav")
         elseif step > 7.5 and step < 7.6 then
             ShowBannerMessage(">> Taunt-Swap: Tank1 -> Tank2 <<", 0.0, 0.8, 1.0, 2.5)
         elseif step > 10.0 and step < 10.1 then
+            PlayCustomSound(ATM_Settings.interruptSound)
             ShowBannerMessage(">> Interrupt: Spieler (Feuerball gekickt) <<", 1.0, 0.5, 0.0, 2.5)
         elseif step > 12.5 and step < 12.6 then
             ShowBannerMessage(">>> TANK GESTORBEN! <<<", 0.8, 0.0, 0.0, 3.0)
@@ -605,7 +612,7 @@ local function CheckThreatStatus()
         local now = GetTime()
         if (now - lastChatAlert) > CHAT_ALERT_COOLDOWN then
             lastChatAlert = now
-            PlaySound("RaidWarning")
+            PlayCustomSound(ATM_Settings.alertSound)
             local lang = ATM_Settings.language or "DE"
             ShowBannerMessage(L[lang].aggroScreen, 1.0, 0.1, 0.1, 3.5)
             local text = string.format(L[lang].aggroChat, UnitName("player"))
@@ -657,7 +664,7 @@ local function CheckStatus()
                 local now = GetTime()
                 if (now - lastHealthAlert) > 10 then
                     lastHealthAlert = now
-                    PlaySoundFile("Sound\\Interface\\RaidWarning.wav")
+                    PlayCustomSound(ATM_Settings.alertSound)
                     ShowBannerMessage(string.format(L[lang].tankLow, pct), 1.0, 0.3, 0.0, 3.0)
                 end
             end
@@ -693,7 +700,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
         
         if ATM_Settings.tankDeathSound and currentTankUnit then
             if subEvent == "UNIT_DIED" and destGUID == UnitGUID(currentTankUnit) then
-                PlaySoundFile("Sound\\Interface\\RaidWarning.wav")
+                PlayCustomSound(ATM_Settings.tankLostSound)
                 ShowBannerMessage(L[lang].tankDied, 0.8, 0.0, 0.0, 4.0)
             end
         end
@@ -703,7 +710,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
                 if TAUNT_SPELLS[spellID] or TAUNT_SPELLS[spellName] then
                     local spellUsed = TAUNT_SPELLS[spellID] or TAUNT_SPELLS[spellName]
                     local targetMob = destName or "Gegner"
-                    PlaySoundFile("Sound\\Interface\\RaidWarning.wav")
+                    PlayCustomSound(ATM_Settings.tankLostSound)
                     ShowBannerMessage(string.format(L[lang].tauntFail, spellUsed, targetMob), 1.0, 0.1, 0.1, 3.5)
                 end
             end
@@ -732,6 +739,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
 
         if ATM_Settings.showInterrupt and subEvent == "SPELL_INTERRUPT" then
             local interruptedSpell = extraArg2 or "Zauber"
+            PlayCustomSound(ATM_Settings.interruptSound)
             ShowBannerMessage(string.format(L[lang].interrupt, sourceName or "Spieler", interruptedSpell), 1.0, 0.5, 0.0, 3.0)
         end
     else
@@ -747,14 +755,14 @@ frame:SetScript("OnEvent", function(self, event, ...)
 end)
 
 -------------------------------------------------------------------------------
--- OPTIONS PANEL (GUI)
+-- OPTIONS PANEL (GUI) - KOMPAKT & SCHÖNE BREITE DROPDOWNS
 -------------------------------------------------------------------------------
 local optionsPanel = CreateFrame("Frame", "AutoTankMarkerOptionsPanel", UIParent)
 optionsPanel.name = "AutoTankMarker"
 
 local title = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
 title:SetPoint("TOPLEFT", 16, -16)
-title:SetText("AutoTankMarker v1.7.2 - Einstellungen")
+title:SetText("AutoTankMarker v1.7.3 - Einstellungen (Entwickler: cHiMeRa83)")
 
 local function CreateCheckbox(name, labelText, yOffset, settingKey)
     local cb = CreateFrame("CheckButton", name, optionsPanel, "InterfaceOptionsCheckButtonTemplate")
@@ -766,7 +774,7 @@ local function CreateCheckbox(name, labelText, yOffset, settingKey)
 end
 
 CreateCheckbox("ATM_CB_AggroAlert", "Aggro-Warnung & Chat-Meldung senden", -45, "aggroAlert")
-CreateCheckbox("ATM_CB_ThreatBar", "Tank-Aggro Prozentleiste im Kampf anzeigen", -70, "showTankThreatBar")
+CreateCheckbox("ATM_CB_ThreatBar", "Tank-Aggro Ampel-Leiste im Kampf anzeigen", -70, "showTankThreatBar")
 CreateCheckbox("ATM_CB_CDMonitor", "Intelligenter CD-Monitor (Statusleiste) anzeigen", -95, "showCDMonitor")
 CreateCheckbox("ATM_CB_TankSwap", "Tank-Wechsel (Taunt-Swap) Ansage", -120, "showTankSwap")
 CreateCheckbox("ATM_CB_Interrupt", "Interrupt & CC-Tracker aktivieren", -145, "showInterrupt")
@@ -777,13 +785,13 @@ CreateCheckbox("ATM_CB_TankDeath", "Sound & Meldung wenn Tank stirbt", -245, "ta
 CreateCheckbox("ATM_CB_TankDef", "Meldung wenn Tank Defensiv-CDs zündet", -270, "tankDefAlert")
 CreateCheckbox("ATM_CB_TauntAlert", "Warnung wenn Spott des Tanks verfehlt", -295, "tauntAlert")
 
--- SLIDER: Aggro-Leiste Skalierung (Breite)
+-- SLIDER: Aggro-Leiste Skalierung (Breite bis 500)
 local sliderThreatW = CreateFrame("Slider", "ATMSliderThreatW", optionsPanel, "OptionsSliderTemplate")
 sliderThreatW:SetPoint("TOPLEFT", 20, -345)
-sliderThreatW:SetMinMaxValues(150, 400)
+sliderThreatW:SetMinMaxValues(150, 500)
 sliderThreatW:SetValueStep(10)
 _G[sliderThreatW:GetName() .. "Low"]:SetText("150")
-_G[sliderThreatW:GetName() .. "High"]:SetText("400")
+_G[sliderThreatW:GetName() .. "High"]:SetText("500")
 _G[sliderThreatW:GetName() .. "Text"]:SetText("Aggro-Leiste Breite: " .. ATM_Settings.threatWidth)
 sliderThreatW:SetScript("OnValueChanged", function(self, value)
     value = math.floor(value)
@@ -792,13 +800,13 @@ sliderThreatW:SetScript("OnValueChanged", function(self, value)
     _G[self:GetName() .. "Text"]:SetText("Aggro-Leiste Breite: " .. value)
 end)
 
--- SLIDER: CD-Monitor Skalierung (Breite)
+-- SLIDER: CD-Monitor Skalierung (Breite bis 500)
 local sliderCDW = CreateFrame("Slider", "ATMSliderCDW", optionsPanel, "OptionsSliderTemplate")
 sliderCDW:SetPoint("TOPLEFT", 240, -345)
-sliderCDW:SetMinMaxValues(150, 400)
+sliderCDW:SetMinMaxValues(150, 500)
 sliderCDW:SetValueStep(10)
 _G[sliderCDW:GetName() .. "Low"]:SetText("150")
-_G[sliderCDW:GetName() .. "High"]:SetText("400")
+_G[sliderCDW:GetName() .. "High"]:SetText("500")
 _G[sliderCDW:GetName() .. "Text"]:SetText("CD-Monitor Breite: " .. ATM_Settings.cdWidth)
 sliderCDW:SetScript("OnValueChanged", function(self, value)
     value = math.floor(value)
@@ -858,8 +866,8 @@ cbMove:SetScript("OnClick", function(self)
         warnFrame:SetBackdropBorderColor(1.0, 0.1, 0.1, 1.0)
 
         threatBar:Show()
-        threatBar:SetValue(85)
-        threatBar:SetStatusBarColor(1.0, 0.8, 0.0)
+        threatBar:SetValue(100)
+        threatBar:SetStatusBarColor(0.0, 0.8, 0.2)
         threatText:SetText("Aggro-Leiste (Verschiebbar)")
         
         UpdateCDMonitorDisplay("TestTank", "Schildwall", 999)
@@ -897,17 +905,17 @@ btnResetPos:SetScript("OnClick", function()
     DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM]|r Alle Positionen zurückgesetzt.")
 end)
 
--- SPRACH-EINSTELLUNG: CHECKBOXEN (DE / ENG) - Noch ein Stück weiter oben positioniert (-510)
+-- SPRACH-EINSTELLUNG: CHECKBOXEN (DE / ENG)
 local langHeader = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-langHeader:SetPoint("TOPLEFT", 16, -510)
+langHeader:SetPoint("TOPLEFT", 16, -515)
 langHeader:SetText("Sprache für Chat & Warnungen:")
 
 local cbDE = CreateFrame("CheckButton", "ATM_CB_LangDE", optionsPanel, "InterfaceOptionsCheckButtonTemplate")
-cbDE:SetPoint("TOPLEFT", 16, -530)
+cbDE:SetPoint("TOPLEFT", 16, -535)
 _G[cbDE:GetName() .. "Text"]:SetText("Deutsch (DEU)")
 
 local cbEN = CreateFrame("CheckButton", "ATM_CB_LangEN", optionsPanel, "InterfaceOptionsCheckButtonTemplate")
-cbEN:SetPoint("TOPLEFT", 150, -530)
+cbEN:SetPoint("TOPLEFT", 150, -535)
 _G[cbEN:GetName() .. "Text"]:SetText("Englisch (ENG)")
 
 cbDE:SetScript("OnClick", function(self)
@@ -922,13 +930,14 @@ cbEN:SetScript("OnClick", function(self)
     cbEN:SetChecked(true)
 end)
 
--- Tank-Symbol Beschriftung & Dropdown (Rechts platziert)
+-- RECHTE SPALTE: TANK-SYMBOL & BREITE SOUND-DROPDOWNS
 local iconHeader = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-iconHeader:SetPoint("TOPLEFT", 270, -45)
+iconHeader:SetPoint("TOPLEFT", 280, -45)
 iconHeader:SetText("Tank-Symbol:")
 
 local iconDropdown = CreateFrame("Frame", "ATMIconDropdown", optionsPanel, "UIDropDownMenuTemplate")
-iconDropdown:SetPoint("TOPLEFT", 260, -62)
+iconDropdown:SetPoint("TOPLEFT", 270, -62)
+UIDropDownMenu_SetWidth(iconDropdown, 200) -- Breiter gemacht
 local iconNames = { 
     [1] = "1 - Stern", 
     [2] = "2 - Kreis", 
@@ -954,6 +963,78 @@ UIDropDownMenu_Initialize(iconDropdown, function(self, level)
     end
 end)
 
+-- SOUND 1: EIGENE AGGRO
+local soundHeader1 = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+soundHeader1:SetPoint("TOPLEFT", 280, -115)
+soundHeader1:SetText("Sound: Eigene Aggro")
+
+local soundDropdown1 = CreateFrame("Frame", "ATMSoundDropdown1", optionsPanel, "UIDropDownMenuTemplate")
+soundDropdown1:SetPoint("TOPLEFT", 270, -132)
+UIDropDownMenu_SetWidth(soundDropdown1, 200) -- Extra breit
+
+UIDropDownMenu_Initialize(soundDropdown1, function(self, level)
+    for _, s in ipairs(AVAILABLE_SOUNDS) do
+        local info = UIDropDownMenu_CreateInfo()
+        info.text = s.name
+        info.value = s.value
+        info.func = function(self)
+            ATM_Settings.alertSound = self.value
+            UIDropDownMenu_SetSelectedValue(soundDropdown1, self.value)
+            UIDropDownMenu_SetText(soundDropdown1, s.name)
+            PlayCustomSound(self.value)
+        end
+        UIDropDownMenu_AddButton(info, level)
+    end
+end)
+
+-- SOUND 2: TANK AGGRO VERLOREN
+local soundHeader2 = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+soundHeader2:SetPoint("TOPLEFT", 280, -175)
+soundHeader2:SetText("Sound: Tank Aggro verloren")
+
+local soundDropdown2 = CreateFrame("Frame", "ATMSoundDropdown2", optionsPanel, "UIDropDownMenuTemplate")
+soundDropdown2:SetPoint("TOPLEFT", 270, -192)
+UIDropDownMenu_SetWidth(soundDropdown2, 200) -- Extra breit
+
+UIDropDownMenu_Initialize(soundDropdown2, function(self, level)
+    for _, s in ipairs(AVAILABLE_SOUNDS) do
+        local info = UIDropDownMenu_CreateInfo()
+        info.text = s.name
+        info.value = s.value
+        info.func = function(self)
+            ATM_Settings.tankLostSound = self.value
+            UIDropDownMenu_SetSelectedValue(soundDropdown2, self.value)
+            UIDropDownMenu_SetText(soundDropdown2, s.name)
+            PlayCustomSound(self.value)
+        end
+        UIDropDownMenu_AddButton(info, level)
+    end
+end)
+
+-- SOUND 3: INTERRUPT ERFOLG
+local soundHeader3 = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+soundHeader3:SetPoint("TOPLEFT", 280, -235)
+soundHeader3:SetText("Sound: Interrupt Erfolg")
+
+local soundDropdown3 = CreateFrame("Frame", "ATMSoundDropdown3", optionsPanel, "UIDropDownMenuTemplate")
+soundDropdown3:SetPoint("TOPLEFT", 270, -252)
+UIDropDownMenu_SetWidth(soundDropdown3, 200) -- Extra breit
+
+UIDropDownMenu_Initialize(soundDropdown3, function(self, level)
+    for _, s in ipairs(AVAILABLE_SOUNDS) do
+        local info = UIDropDownMenu_CreateInfo()
+        info.text = s.name
+        info.value = s.value
+        info.func = function(self)
+            ATM_Settings.interruptSound = self.value
+            UIDropDownMenu_SetSelectedValue(soundDropdown3, self.value)
+            UIDropDownMenu_SetText(soundDropdown3, s.name)
+            PlayCustomSound(self.value)
+        end
+        UIDropDownMenu_AddButton(info, level)
+    end
+end)
+
 optionsPanel:SetScript("OnShow", function()
     if ATM_Settings.language == "EN" then
         cbDE:SetChecked(false)
@@ -972,6 +1053,27 @@ optionsPanel:SetScript("OnShow", function()
     end
     UIDropDownMenu_SetSelectedValue(iconDropdown, ATM_Settings.marker)
     UIDropDownMenu_SetText(iconDropdown, iconNames[ATM_Settings.marker] or "")
+
+    local sName1 = "Ack (Eigene Aggro)"
+    for _, s in ipairs(AVAILABLE_SOUNDS) do
+        if s.value == ATM_Settings.alertSound then sName1 = s.name break end
+    end
+    UIDropDownMenu_SetSelectedValue(soundDropdown1, ATM_Settings.alertSound)
+    UIDropDownMenu_SetText(soundDropdown1, sName1)
+
+    local sName2 = "Fart (Tank Aggro verloren)"
+    for _, s in ipairs(AVAILABLE_SOUNDS) do
+        if s.value == ATM_Settings.tankLostSound then sName2 = s.name break end
+    end
+    UIDropDownMenu_SetSelectedValue(soundDropdown2, ATM_Settings.tankLostSound)
+    UIDropDownMenu_SetText(soundDropdown2, sName2)
+
+    local sName3 = "Among Us (Interrupt)"
+    for _, s in ipairs(AVAILABLE_SOUNDS) do
+        if s.value == ATM_Settings.interruptSound then sName3 = s.name break end
+    end
+    UIDropDownMenu_SetSelectedValue(soundDropdown3, ATM_Settings.interruptSound)
+    UIDropDownMenu_SetText(soundDropdown3, sName3)
 end)
 
 InterfaceOptions_AddCategory(optionsPanel)
@@ -999,6 +1101,6 @@ SlashCmdList["AUTOTANK"] = function(msg)
         end
     else
         FindAndMarkTank()
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM v1.7.2]|r Tank-Suche ausgeführt. Tippe |cffffd100/atm config|r für Einstellungen.")
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM v1.7.3]|r Tank-Suche ausgeführt. Tippe |cffffd100/atm config|r für Einstellungen.")
     end
 end
