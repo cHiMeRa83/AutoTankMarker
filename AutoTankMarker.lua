@@ -1,6 +1,6 @@
 local frame = CreateFrame("Frame")
 
--- Standard-Einstellungen (v1.9.12)
+-- Standard-Einstellungen (v1.7.2)
 ATM_Settings = ATM_Settings or {
     marker = 6,
     autoFocus = false,
@@ -26,6 +26,7 @@ ATM_Settings = ATM_Settings or {
     cdY = -155,
     warnX = 0,
     warnY = 180,
+    minimapPos = 45,
     fontSize = 12,
 }
 
@@ -38,6 +39,94 @@ local MANA_WHISPER_COOLDOWN = 30
 local currentTankUnit = nil
 local isTestingMode = false
 local isUnlockedForMoving = false
+
+-------------------------------------------------------------------------------
+-- MINIMAP BUTTON ERSTELLUNG
+-------------------------------------------------------------------------------
+local minimapButton = CreateFrame("Button", "ATMMinimapButton", Minimap)
+minimapButton:SetSize(32, 32)
+minimapButton:SetFrameStrata("HIGH")
+minimapButton:SetFrameLevel(99)
+minimapButton:SetMovable(true)
+minimapButton:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+minimapButton:RegisterForDrag("LeftButton")
+
+-- Icon zentriert
+local icon = minimapButton:CreateTexture(nil, "BACKGROUND")
+icon:SetTexture("Interface\\Icons\\Ability_Warrior_ShieldBash")
+icon:SetSize(22, 22)
+icon:SetPoint("CENTER", minimapButton, "CENTER", 0, 0)
+
+-- Hintergrund-Kreis
+local bg = minimapButton:CreateTexture(nil, "ARTWORK")
+bg:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
+bg:SetSize(26, 26)
+bg:SetPoint("CENTER", minimapButton, "CENTER", 0, 0)
+icon:SetDrawLayer("OVERLAY", 1)
+
+local sliderMinimapAngle -- Forward declaration for update reference
+
+local function UpdateMinimapButtonPosition(angle)
+    local x = cos(angle) * 80
+    local y = sin(angle) * 80
+    minimapButton:ClearAllPoints()
+    minimapButton:SetPoint("CENTER", Minimap, "CENTER", x, y)
+    if sliderMinimapAngle then
+        sliderMinimapAngle:SetValue(angle)
+        _G[sliderMinimapAngle:GetName() .. "Text"]:SetText("Minimap-Position: " .. math.floor(angle) .. "°")
+    end
+end
+
+minimapButton:SetScript("OnLoad", function(self)
+    UpdateMinimapButtonPosition(ATM_Settings.minimapPos or 45)
+end)
+
+minimapButton:SetScript("OnDragStart", function(self)
+    self:LockHighlight()
+    self:SetScript("OnUpdate", function(s)
+        local mx, my = Minimap:GetCenter()
+        local cx, cy = GetCursorPosition()
+        local scale = UIParent:GetEffectiveScale()
+        cx, cy = cx / scale, cy / scale
+        local angle = math.deg(math.atan2(cy - my, cx - mx))
+        if angle < 0 then angle = angle + 360 end
+        ATM_Settings.minimapPos = angle
+        UpdateMinimapButtonPosition(angle)
+    end)
+end)
+
+minimapButton:SetScript("OnDragStop", function(self)
+    self:SetScript("OnUpdate", nil)
+    self:UnlockHighlight()
+end)
+
+local RunTestMode -- Forward declaration
+
+minimapButton:SetScript("OnClick", function(self, button)
+    if button == "LeftButton" then
+        if InterfaceOptionsFrame:IsShown() then
+            InterfaceOptionsFrame:Hide()
+        else
+            InterfaceOptionsFrame_OpenToCategory("AutoTankMarker")
+            InterfaceOptionsFrame_OpenToCategory("AutoTankMarker")
+        end
+    elseif button == "RightButton" then
+        RunTestMode()
+    end
+end)
+
+minimapButton:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+    GameTooltip:AddLine("AutoTankMarker (ATM)", 1, 0.8, 0)
+    GameTooltip:AddLine("Linksklick: |cffffffffEinstellungen öffnen|r", 0.2, 1, 0.2)
+    GameTooltip:AddLine("Rechtsklick: |cffffffffTestmodus starten|r", 0.2, 1, 0.2)
+    GameTooltip:AddLine("Drag & Drop: |cffffffffPosition verschieben|r", 0.7, 0.7, 0.7)
+    GameTooltip:Show()
+end)
+
+minimapButton:SetScript("OnLeave", function(self)
+    GameTooltip:Hide()
+end)
 
 -------------------------------------------------------------------------------
 -- DESIGN IM "TANK GESTORBEN"-STYLE (ROT & ULTRA LESBAR)
@@ -68,7 +157,7 @@ local function UpdateBarStyles()
 end
 
 -------------------------------------------------------------------------------
--- WARNBALKEN (BANNER FRAME - JETZT AUCH VERSCHIEBBAR)
+-- WARNBALKEN (BANNER FRAME)
 -------------------------------------------------------------------------------
 local warnFrame = CreateFrame("Frame", "ATMWarnFrame", UIParent)
 warnFrame:SetSize(380, 42)
@@ -175,7 +264,7 @@ threatBar:SetScript("OnUpdate", function(self, elapsed)
     if isTestingMode or isUnlockedForMoving then return end
 
     threatTimer = threatTimer + elapsed
-    if threatTimer > 0.15 then
+    if threatTimer > 0.1 then
         threatTimer = 0
         
         if not ATM_Settings.showTankThreatBar or not InCombatLockdown() then
@@ -184,59 +273,53 @@ threatBar:SetScript("OnUpdate", function(self, elapsed)
         end
 
         local mobUnit = nil
-        if UnitExists("target") and UnitCanAttack("player", "target") then
+        if UnitExists("target") and UnitCanAttack("player", "target") and not UnitIsDead("target") then
             mobUnit = "target"
-        elseif UnitExists("targettarget") and UnitCanAttack("player", "targettarget") then
+        elseif UnitExists("targettarget") and UnitCanAttack("player", "targettarget") and not UnitIsDead("targettarget") then
             mobUnit = "targettarget"
-        elseif currentTankUnit and UnitExists(currentTankUnit .. "target") and UnitCanAttack("player", currentTankUnit .. "target") then
+        elseif currentTankUnit and UnitExists(currentTankUnit .. "target") and UnitCanAttack("player", currentTankUnit .. "target") and not UnitIsDead(currentTankUnit .. "target") then
             mobUnit = currentTankUnit .. "target"
-        elseif UnitExists("focustarget") and UnitCanAttack("player", "focustarget") then
+        elseif UnitExists("focustarget") and UnitCanAttack("player", "focustarget") and not UnitIsDead("focustarget") then
             mobUnit = "focustarget"
         end
 
+        local pct = nil
         if mobUnit then
-            local pct = nil
-            local tankUnit = currentTankUnit or "player"
-
             local _, _, threatpct = UnitDetailedThreatSituation("player", mobUnit)
             if threatpct then
                 pct = math.floor(threatpct)
-            else
-                local tankStatus = UnitThreatSituation(tankUnit, mobUnit)
-                if tankStatus == 3 then pct = 100 
-                elseif tankStatus == 2 then pct = 80  
-                elseif tankStatus == 1 then pct = 60  
-                elseif tankStatus == 0 then pct = 30  
-                end
             end
+        end
 
-            if pct and pct > 0 then
-                self:Show()
-                self:SetValue(pct)
-                threatText:SetText(string.format("Tank Aggro: %d%%", pct))
-                threatText:SetTextColor(1.0, 1.0, 1.0, 1.0)
+        if not pct or pct <= 0 then
+            local globalStatus = UnitThreatSituation("player")
+            if globalStatus and globalStatus > 0 then
+                if globalStatus == 3 then pct = 100
+                elseif globalStatus == 2 then pct = 90
+                elseif globalStatus == 1 then pct = 60
+                else pct = 30 end
+            end
+        end
 
-                if pct >= 100 then
-                    self:SetStatusBarColor(0.0, 0.8, 0.2) 
-                elseif pct >= 80 then
-                    self:SetStatusBarColor(1.0, 0.8, 0.0) 
-                else
-                    self:SetStatusBarColor(0.9, 0.1, 0.1) 
-                end
+        if pct and pct > 0 then
+            self:Show()
+            self:SetValue(pct)
+            threatText:SetText(string.format("Tank Aggro: %d%%", pct))
+            threatText:SetTextColor(1.0, 1.0, 1.0, 1.0)
+
+            if pct >= 100 then
+                self:SetStatusBarColor(0.0, 0.8, 0.2) 
+            elseif pct >= 80 then
+                self:SetStatusBarColor(1.0, 0.8, 0.0) 
             else
-                local globalStatus = UnitThreatSituation("player")
-                if globalStatus and globalStatus > 0 then
-                    self:Show()
-                    self:SetValue(globalStatus == 3 and 100 or (globalStatus == 2 and 80 or 50))
-                    threatText:SetText("Aggro im Kampf!")
-                    threatText:SetTextColor(1.0, 1.0, 1.0, 1.0)
-                    self:SetStatusBarColor(0.9, 0.1, 0.1)
-                else
-                    self:Hide()
-                end
+                self:SetStatusBarColor(0.9, 0.1, 0.1) 
             end
         else
-            self:Hide()
+            self:Show()
+            self:SetValue(20)
+            threatText:SetText("Tank Aggro: Aktiv")
+            threatText:SetTextColor(1.0, 1.0, 1.0, 1.0)
+            self:SetStatusBarColor(0.2, 0.6, 1.0)
         end
     end
 end)
@@ -310,6 +393,55 @@ local function UpdateCDMonitorDisplay(tankName, spellName, duration)
             f:SetScript("OnUpdate", nil)
             cdText:SetText("Kein aktiver Def-CD")
             cdText:SetTextColor(1.0, 1.0, 1.0, 1.0)
+        end
+    end)
+end
+
+-------------------------------------------------------------------------------
+-- TESTMODUS
+-------------------------------------------------------------------------------
+function RunTestMode()
+    local lang = ATM_Settings.language or "DE"
+    isTestingMode = true
+    UpdateBarStyles()
+    DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM TEST]|r Starte Testmodus v1.7.2...")
+
+    PlaySound("RaidWarning")
+    ShowBannerMessage(">>> AGGRO AUF HEILER! <<<", 1.0, 0.1, 0.1, 2.5)
+    
+    threatBar:Show()
+    threatBar:SetValue(85)
+    threatBar:SetStatusBarColor(1.0, 0.8, 0.0)
+    threatText:SetText("Tank Aggro: 85% (Test)")
+
+    UpdateCDMonitorDisplay("TestTank", "Schildwall", 12)
+
+    local testTimer = CreateFrame("Frame")
+    local step = 0
+    testTimer:SetScript("OnUpdate", function(self, elapsed)
+        step = step + elapsed
+        if step > 2.5 and step < 2.6 then
+            threatBar:SetValue(100)
+            threatBar:SetStatusBarColor(0.0, 0.8, 0.2)
+            threatText:SetText("Tank Aggro: 100%")
+            ShowBannerMessage(">> Tank CD: Schildwall (12s) <<", 0.0, 1.0, 0.2, 2.5)
+        elseif step > 5.0 and step < 5.1 then
+            ShowBannerMessage(">>> SPOTT VERFEHLT (Spott) auf Mob! <<<", 1.0, 0.0, 0.0, 2.5)
+            PlaySoundFile("Sound\\Interface\\RaidWarning.wav")
+        elseif step > 7.5 and step < 7.6 then
+            ShowBannerMessage(">> Taunt-Swap: Tank1 -> Tank2 <<", 0.0, 0.8, 1.0, 2.5)
+        elseif step > 10.0 and step < 10.1 then
+            ShowBannerMessage(">> Interrupt: Spieler (Feuerball gekickt) <<", 1.0, 0.5, 0.0, 2.5)
+        elseif step > 12.5 and step < 12.6 then
+            ShowBannerMessage(">>> TANK GESTORBEN! <<<", 0.8, 0.0, 0.0, 3.0)
+            if not isUnlockedForMoving then 
+                threatBar:Hide() 
+                cdBar:Hide() 
+                warnFrame:Hide() 
+            end
+            isTestingMode = false
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM TEST]|r Test beendet.")
+            self:SetScript("OnUpdate", nil)
         end
     end)
 end
@@ -533,54 +665,6 @@ local function CheckStatus()
     end
 end
 
-local function RunTestMode()
-    local lang = ATM_Settings.language or "DE"
-    isTestingMode = true
-    UpdateBarStyles()
-    DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM TEST]|r Starte Testmodus v1.9.12...")
-
-    PlaySound("RaidWarning")
-    ShowBannerMessage(L[lang].aggroScreen, 1.0, 0.1, 0.1, 2.5)
-    
-    threatBar:Show()
-    threatBar:SetValue(85)
-    threatBar:SetStatusBarColor(1.0, 0.8, 0.0)
-    threatText:SetText("Tank Aggro: 85% (Test)")
-    threatText:SetTextColor(1.0, 1.0, 1.0, 1.0)
-
-    UpdateCDMonitorDisplay("TestTank", "Schildwall", 12)
-    
-    local text = string.format(L[lang].aggroChat, UnitName("player"))
-    local chatType = GetNumRaidMembers() > 0 and "RAID" or (GetNumPartyMembers() > 0 and "PARTY" or nil)
-    if chatType then SendChatMessage(text, chatType) end
-
-    local testTimer = CreateFrame("Frame")
-    local step = 0
-    testTimer:SetScript("OnUpdate", function(self, elapsed)
-        step = step + elapsed
-        if step > 2.5 and step < 2.6 then
-            threatBar:SetValue(100)
-            threatBar:SetStatusBarColor(0.0, 0.8, 0.2)
-            threatText:SetText("Tank Aggro: 100%")
-            threatText:SetTextColor(1.0, 1.0, 1.0, 1.0)
-            ShowBannerMessage(string.format(L[lang].defCD, "Schildwall", 12), 0.0, 1.0, 0.2, 2.5)
-        elseif step > 5.0 and step < 5.1 then
-            ShowBannerMessage(string.format(L[lang].tauntFail, "Spott", "Mob"), 1.0, 0.0, 0.0, 2.5)
-            PlaySoundFile("Sound\\Interface\\RaidWarning.wav")
-        elseif step > 7.5 and step < 7.6 then
-            ShowBannerMessage(string.format(L[lang].tankSwap, "Tank1", "Tank2"), 0.0, 0.8, 1.0, 2.5)
-        elseif step > 10.0 and step < 10.1 then
-            ShowBannerMessage(string.format(L[lang].interrupt, "Spieler", "Feuerball"), 1.0, 0.5, 0.0, 2.5)
-        elseif step > 12.5 and step < 12.6 then
-            ShowBannerMessage(L[lang].tankDied, 0.8, 0.0, 0.0, 3.0)
-            if not isUnlockedForMoving then threatBar:Hide() cdBar:Hide() warnFrame:Hide() end
-            isTestingMode = false
-            DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM TEST]|r Test beendet.")
-            self:SetScript("OnUpdate", nil)
-        end
-    end)
-end
-
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PARTY_MEMBERS_CHANGED")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -598,6 +682,7 @@ frame:SetScript("OnEvent", function(self, event, ...)
         if addonName == "AutoTankMarker" then
             SetCVar("threatShowNumeric", 1)
             UpdateBarStyles()
+            UpdateMinimapButtonPosition(ATM_Settings.minimapPos or 45)
         end
     elseif event == "UNIT_THREAT_LIST_UPDATE" or event == "PLAYER_REGEN_DISABLED" then
         CheckThreatStatus()
@@ -669,7 +754,7 @@ optionsPanel.name = "AutoTankMarker"
 
 local title = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
 title:SetPoint("TOPLEFT", 16, -16)
-title:SetText("AutoTankMarker v1.9.12 - Einstellungen")
+title:SetText("AutoTankMarker v1.7.2 - Einstellungen")
 
 local function CreateCheckbox(name, labelText, yOffset, settingKey)
     local cb = CreateFrame("CheckButton", name, optionsPanel, "InterfaceOptionsCheckButtonTemplate")
@@ -737,6 +822,21 @@ sliderFont:SetScript("OnValueChanged", function(self, value)
     _G[self:GetName() .. "Text"]:SetText("Schriftgröße: " .. value)
 end)
 
+-- SLIDER: Minimap-Position (Winkel 0-360)
+sliderMinimapAngle = CreateFrame("Slider", "ATMSliderMinimapAngle", optionsPanel, "OptionsSliderTemplate")
+sliderMinimapAngle:SetPoint("TOPLEFT", 240, -400)
+sliderMinimapAngle:SetMinMaxValues(0, 360)
+sliderMinimapAngle:SetValueStep(5)
+_G[sliderMinimapAngle:GetName() .. "Low"]:SetText("0°")
+_G[sliderMinimapAngle:GetName() .. "High"]:SetText("360°")
+_G[sliderMinimapAngle:GetName() .. "Text"]:SetText("Minimap-Position: " .. (ATM_Settings.minimapPos or 45) .. "°")
+sliderMinimapAngle:SetScript("OnValueChanged", function(self, value)
+    value = math.floor(value)
+    ATM_Settings.minimapPos = value
+    UpdateMinimapButtonPosition(value)
+    _G[self:GetName() .. "Text"]:SetText("Minimap-Position: " .. value .. "°")
+end)
+
 -- BUTTON: TESTMODUS STARTEN
 local btnTest = CreateFrame("Button", "ATM_Btn_RunTest", optionsPanel, "UIPanelButtonTemplate")
 btnTest:SetPoint("TOPLEFT", 16, -450)
@@ -762,9 +862,7 @@ cbMove:SetScript("OnClick", function(self)
         threatBar:SetStatusBarColor(1.0, 0.8, 0.0)
         threatText:SetText("Aggro-Leiste (Verschiebbar)")
         
-        cdBar:Show()
         UpdateCDMonitorDisplay("TestTank", "Schildwall", 999)
-        cdText:SetText("CD-Monitor (Verschiebbar)")
     else
         warnFrame:Hide()
         threatBar:Hide()
@@ -793,20 +891,23 @@ btnResetPos:SetScript("OnClick", function()
     ATM_Settings.warnX = 0
     ATM_Settings.warnY = 180
 
+    ATM_Settings.minimapPos = 45
+    UpdateMinimapButtonPosition(45)
+
     DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM]|r Alle Positionen zurückgesetzt.")
 end)
 
--- SPRACH-EINSTELLUNG: CHECKBOXEN (DE / ENG)
+-- SPRACH-EINSTELLUNG: CHECKBOXEN (DE / ENG) - Noch ein Stück weiter oben positioniert (-510)
 local langHeader = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-langHeader:SetPoint("TOPLEFT", 16, -535)
+langHeader:SetPoint("TOPLEFT", 16, -510)
 langHeader:SetText("Sprache für Chat & Warnungen:")
 
 local cbDE = CreateFrame("CheckButton", "ATM_CB_LangDE", optionsPanel, "InterfaceOptionsCheckButtonTemplate")
-cbDE:SetPoint("TOPLEFT", 16, -555)
+cbDE:SetPoint("TOPLEFT", 16, -530)
 _G[cbDE:GetName() .. "Text"]:SetText("Deutsch (DEU)")
 
 local cbEN = CreateFrame("CheckButton", "ATM_CB_LangEN", optionsPanel, "InterfaceOptionsCheckButtonTemplate")
-cbEN:SetPoint("TOPLEFT", 150, -555)
+cbEN:SetPoint("TOPLEFT", 150, -530)
 _G[cbEN:GetName() .. "Text"]:SetText("Englisch (ENG)")
 
 cbDE:SetScript("OnClick", function(self)
@@ -866,6 +967,9 @@ optionsPanel:SetScript("OnShow", function()
     sliderThreatW:SetValue(ATM_Settings.threatWidth)
     sliderCDW:SetValue(ATM_Settings.cdWidth)
     sliderFont:SetValue(ATM_Settings.fontSize)
+    if sliderMinimapAngle then
+        sliderMinimapAngle:SetValue(ATM_Settings.minimapPos or 45)
+    end
     UIDropDownMenu_SetSelectedValue(iconDropdown, ATM_Settings.marker)
     UIDropDownMenu_SetText(iconDropdown, iconNames[ATM_Settings.marker] or "")
 end)
@@ -876,14 +980,25 @@ InterfaceOptions_AddCategory(optionsPanel)
 SLASH_AUTOTANK1 = "/autotank"
 SLASH_AUTOTANK2 = "/atm"
 SlashCmdList["AUTOTANK"] = function(msg)
-    local cmd = msg:lower():trim()
+    local cmd, arg = msg:match("^(%S+)%s*(.-)$")
+    cmd = (cmd or msg):lower():trim()
+    
     if cmd == "config" or cmd == "opt" or cmd == "options" then
         InterfaceOptionsFrame_OpenToCategory(optionsPanel)
         InterfaceOptionsFrame_OpenToCategory(optionsPanel)
     elseif cmd == "test" then
         RunTestMode()
+    elseif cmd == "pos" then
+        local val = tonumber(arg)
+        if val then
+            ATM_Settings.minimapPos = val
+            UpdateMinimapButtonPosition(val)
+            DEFAULT_CHAT_FRAME:AddMessage(string.format("|cff00ff00[ATM]|r Minimap-Position auf %d° gesetzt.", val))
+        else
+            DEFAULT_CHAT_FRAME:AddMessage("|cffff0000[ATM]|r Bitte gib einen Winkel an (z.B. /atm pos 90).")
+        end
     else
         FindAndMarkTank()
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM v1.9.12]|r Tank-Suche ausgeführt. Tippe |cffffd100/atm config|r für Einstellungen oder |cffffd100/atm test|r.")
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM v1.7.2]|r Tank-Suche ausgeführt. Tippe |cffffd100/atm config|r für Einstellungen.")
     end
 end
