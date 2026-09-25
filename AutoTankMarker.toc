@@ -1,8 +1,0 @@
-## Interface: 30300
-## Title: AutoTankMarker
-## Notes: Automatischer Tank-Marker, Aggro-, Def-CD-, Taunt-Fail- & Utility-Tracker für Heiler
-## Author: cHiMeRa83
-## Version: 1.7.4
-## SavedVariables: ATM_Settings
-
-AutoTankMarker.lua
