@@ -1,11 +1,11 @@
 # 🛡️ AutoTankMarker (ATM)
 
-![Version](https://img.shields.io/badge/Version-v1.75-blue.svg)
+![Version](https://img.shields.io/badge/Version-v1.76-blue.svg)
 ![WoW Version](https://img.shields.io/badge/WoW-3.3.5a-orange.svg)
 
 > **Ein unverzichtbares Utility-Tool für Heiler in World of Warcraft: Wrath of the Lich King (Patch 3.3.5a)**
 
-[![Download Latest Release](https://img.shields.io/badge/📥_Download-Neueste_Version_(v1.75)-brightgreen?style=for-the-badge&logo=github)](https://github.com/cHiMeRa83/AutoTankMarker/releases/latest)
+[![Download Latest Release](https://img.shields.io/badge/📥_Download-Neueste_Version_(v1.76)-brightgreen?style=for-the-badge&logo=github)](https://github.com/cHiMeRa83/AutoTankMarker/releases/latest)
 
 ---
 
@@ -77,7 +77,7 @@ AutoTankMarker (ATM) erleichtert Heilern die Arbeit in Dungeons und Raids enorm.
 
 ## 💻 Installation
 
-1. [Klicke hier, um Version v1.75 herunterzuladen](https://github.com/cHiMeRa83/AutoTankMarker/releases/latest).
+1. [Klicke hier, um Version v1.76 herunterzuladen](https://github.com/cHiMeRa83/AutoTankMarker/releases/latest).
 2. Entpacke den heruntergeladenen Ordner in dein WoW-Verzeichnis:
    `World of Warcraft\Interface\AddOns\`
 3. Stelle sicher, dass der Ordnerpfad wie folgt aussieht:
