@@ -43,14 +43,12 @@ AutoTankMarker (ATM) erleichtert Heilern die Arbeit in Dungeons und Raids enorm.
 
 ---
 
-## 🚀 Neu in Version v1.75 (Changelog)
+## 📋 Changelog
 
-* 💾 **Permanente Speicherung:** Die Konfigurationsvariablen wurden über `SavedVariables` angebunden, sodass Einstellungen und Layout-Positionen nicht mehr zurückgesetzt werden.
-* ~~🎵 **Custom Sound Integration:** Volle Unterstützung für eigene `.wav`-Dateien (*Ack, Fart, Among Us*) via `PlaySoundFile` für Alarme und Interrupts.~~
-* 🛡️ **Optimierte Def-CD-Anzeige:** Tank-Defensiv-CDs im Dungeon und Raid heben sich jetzt sofort durch einen kräftigen, gut lesbaren Gold/Gelb-Ton (`>> TANK CD: [Name] <<`) ab.
-* 📏 **Erweiterte UI-Größenanpassung:** Neben der Breite lassen sich jetzt auch die **Höhen** für die Tank-Aggro-Ampelleiste und den CD-Monitor direkt über neue Schieberegler im Optionsmenü individuell einstellen.
-* 🎨 **UI & Layout Optimierungen:** Die Dropdowns und Menüelemente im Einstellungsfenster wurden übersichtlich aufgeteilt und perfekt ausgerichtet (kein Überlappen mehr).
-* 👤 **Entwickler-Info:** Offizieller Entwickler-Credit für **cHiMeRa83** (`v1.75 ©cHiMeRa83`) im Titel des Einstellungsfensters eingepflegt.
+### v1.76 (Aktuelle Version)
+* **Zentralisierte Leisten-Anpassung:** Die Regler für Leisten-Breite, Leisten-Höhe und Schriftgröße steuern nun **alle Statusleisten** (Aggro, Def-CD, Interrupt, Trinken, Essen) gemeinsam, was für ein einheitliches Design sorgt.
+* **Optimiertes Optionsmenü (ScrollFrame):** Das Einstellungsfenster wurde mit einem integrierten `ScrollFrame` ausgestattet. Alle Optionen, Regler und Dropdowns sind nun sauber und übersichtlich erreichbar, ohne sich zu überlappen oder aus dem Fenster zu ragen.
+* **Platzersparnis & Performance:** Code-Struktur für die UI-Regler entschlackt, um Konfigurations-Redundanzen zu beseitigen.
 
 ---
 
