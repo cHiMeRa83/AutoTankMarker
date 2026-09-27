@@ -1,6 +1,6 @@
 local frame = CreateFrame("Frame")
 
--- Standard-Einstellungen (v1.77)
+-- Standard-Einstellungen (v1.78 - Food/Drink Fix)
 local defaultSettings = {
     marker = 6,
     autoFocus = false,
@@ -18,6 +18,7 @@ local defaultSettings = {
     showFoodBar = true,
     showTankSwap = true,
     showInterrupt = true,
+    disableAllBars = false,
     language = "DE",
     barSkin = "NEON",
     threatWidth = 400,
@@ -62,6 +63,36 @@ local currentTankUnit = nil
 local ischimeraTestingMode = false
 local isUnlockedForMoving = false
 
+-- KLASSENFARBEN FÜR SPIELER-NAMEN
+local RAID_CLASS_COLORS = {
+    ['DEATHKNIGHT'] = { r = 0.77, g = 0.12, b = 0.23 },
+    ['DRUID']       = { r = 1.00, g = 0.49, b = 0.04 },
+    ['HUNTER']      = { r = 0.67, g = 0.83, b = 0.45 },
+    ['MAGE']        = { r = 0.25, g = 0.78, b = 0.92 },
+    ['PALADIN']     = { r = 0.96, g = 0.55, b = 0.73 },
+    ['PRIEST']      = { r = 1.00, g = 1.00, b = 1.00 },
+    ['ROGUE']       = { r = 1.00, g = 0.96, b = 0.41 },
+    ['SHAMAN']      = { r = 0.00, g = 0.44, b = 0.87 },
+    ['WARLOCK']     = { r = 0.53, g = 0.53, b = 0.93 },
+    ['WARRIOR']     = { r = 0.78, g = 0.61, b = 0.43 },
+}
+
+local function GetClassColorHex(name)
+    if not name then return "ffffffff" end
+    local _, englishClass = UnitClass(name)
+    if englishClass and RAID_CLASS_COLORS[englishClass] then
+        local c = RAID_CLASS_COLORS[englishClass]
+        return string.format("%02x%02x%02x%02x", 255, c.r * 255, c.g * 255, c.b * 255)
+    end
+    return "ffffffff"
+end
+
+local function FormatColoredName(name)
+    if not name then return "Unbekannt" end
+    local hex = GetClassColorHex(name)
+    return string.format("|c%s%s|r", hex, name)
+end
+
 -- VERFÜGBARE SOUNDS FÜR DIE DROPDOWNS
 local AVAILABLE_SOUNDS = {
     { name = "Aus (Kein Ton)", value = "DISABLED" },
@@ -70,6 +101,7 @@ local AVAILABLE_SOUNDS = {
     { name = "Evowow Sound 3227 (Interrupt)", value = "3227" },
 }
 
+-- 14 SKINS
 local AVAILABLE_SKINS = {
     { name = "Neon Cyber (Leuchtend)", value = "NEON" },
     { name = "Modern Dark (Clean & Dunkel)", value = "MODERN" },
@@ -80,6 +112,11 @@ local AVAILABLE_SKINS = {
     { name = "Blaues Kristall (Magisch)", value = "CRYSTAL" },
     { name = "Smaragdgrün (Natur)", value = "EMERALD" },
     { name = "Arcane Lila (Mystisch)", value = "ARCANE" },
+    { name = "Matrix (Digital Grün)", value = "MATRIX" },
+    { name = "Carbon (High-Tech Grau)", value = "CARBON" },
+    { name = "Frostbite (Eisblau)", value = "FROST" },
+    { name = "Sunset (Feuriges Orange)", value = "SUNSET" },
+    { name = "Retro Arcade (Neon Pink)", value = "RETRO" },
 }
 
 local function PlayCustomSound(soundKey)
@@ -99,7 +136,19 @@ local function PlayCustomSound(soundKey)
 end
 
 -------------------------------------------------------------------------------
--- HILFSFUNKTION: PRÜFT OB IN INSTANZ (DUNGEON / RAID) ODER TESTMODUS
+-- HILFSFUNKTION: NAMEN KÜRZEN
+-------------------------------------------------------------------------------
+local function ShortenName(name, maxLen)
+    if not name then return "Unbekannt" end
+    maxLen = maxLen or 18
+    if string.len(name) > maxLen then
+        return string.sub(name, 1, maxLen) .. "..."
+    end
+    return name
+end
+
+-------------------------------------------------------------------------------
+-- HILFSFUNKTION: PRÜFT OB IN INSTANZ ODER TESTMODUS
 -------------------------------------------------------------------------------
 local function IsInInstanceArea()
     if ischimeraTestingMode or isUnlockedForMoving then return true end
@@ -108,7 +157,7 @@ local function IsInInstanceArea()
 end
 
 -------------------------------------------------------------------------------
--- BILDSCHIRM-BLITZ (ROTES AUFLEUCHTEN BEI AGGRO)
+-- BILDSCHIRM-BLITZ
 -------------------------------------------------------------------------------
 local flashFrame = CreateFrame("Frame", "ATMFlashFrame", UIParent)
 flashFrame:SetAllPoints(UIParent)
@@ -223,7 +272,7 @@ minimapButton:SetScript("OnLeave", function(self)
 end)
 
 -------------------------------------------------------------------------------
--- DESIGN & 9-SKIN-SYSTEM
+-- DESIGN & 14-SKIN-SYSTEM
 -------------------------------------------------------------------------------
 local threatText, cdText, intText, drinkText, foodText, warnText
 local threatBackdrop, cdBackdrop, intBackdrop, drinkBackdrop, foodBackdrop, warnBackdrop
@@ -240,23 +289,24 @@ local function UpdateBarStyles()
         if bar then
             bar:SetWidth(w)
             bar:SetHeight(h)
+            bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
         end
     end
 
     if skin == "NEON" then
-        if threatBackdrop then threatBackdrop:SetBackdropColor(0.0, 0.0, 0.0, 0.9); threatBackdrop:SetBackdropBorderColor(1.0, 0.0, 0.3, 1.0) end
-        if cdBackdrop then cdBackdrop:SetBackdropColor(0.0, 0.0, 0.0, 0.9); cdBackdrop:SetBackdropBorderColor(1.0, 0.9, 0.0, 1.0) end
-        if intBackdrop then intBackdrop:SetBackdropColor(0.0, 0.0, 0.0, 0.9); intBackdrop:SetBackdropBorderColor(0.0, 0.9, 1.0, 1.0) end
-        if drinkBackdrop then drinkBackdrop:SetBackdropColor(0.0, 0.0, 0.0, 0.9); drinkBackdrop:SetBackdropBorderColor(0.0, 1.0, 1.0, 1.0) end
-        if foodBackdrop then foodBackdrop:SetBackdropColor(0.0, 0.0, 0.0, 0.9); foodBackdrop:SetBackdropBorderColor(1.0, 0.6, 0.0, 1.0) end
-        if warnBackdrop then warnBackdrop:SetBackdropColor(0.0, 0.0, 0.0, 0.95); warnBackdrop:SetBackdropBorderColor(1.0, 0.0, 0.5, 1.0) end
+        if threatBackdrop then threatBackdrop:SetBackdropColor(0.0, 0.0, 0.0, 0.95); threatBackdrop:SetBackdropBorderColor(1.0, 0.0, 0.3, 1.0) end
+        if cdBackdrop then cdBackdrop:SetBackdropColor(0.0, 0.0, 0.0, 0.95); cdBackdrop:SetBackdropBorderColor(1.0, 0.9, 0.0, 1.0) end
+        if intBackdrop then intBackdrop:SetBackdropColor(0.0, 0.0, 0.0, 0.95); intBackdrop:SetBackdropBorderColor(0.0, 0.9, 1.0, 1.0) end
+        if drinkBackdrop then drinkBackdrop:SetBackdropColor(0.0, 0.0, 0.0, 0.95); drinkBackdrop:SetBackdropBorderColor(0.0, 1.0, 1.0, 1.0) end
+        if foodBackdrop then foodBackdrop:SetBackdropColor(0.0, 0.0, 0.0, 0.95); foodBackdrop:SetBackdropBorderColor(1.0, 0.6, 0.0, 1.0) end
+        if warnBackdrop then warnBackdrop:SetBackdropColor(0.0, 0.0, 0.0, 0.98); warnBackdrop:SetBackdropBorderColor(1.0, 0.0, 0.5, 1.0) end
     elseif skin == "MODERN" then
-        if threatBackdrop then threatBackdrop:SetBackdropColor(0.05, 0.05, 0.05, 0.85); threatBackdrop:SetBackdropBorderColor(0.8, 0.1, 0.1, 1.0) end
-        if cdBackdrop then cdBackdrop:SetBackdropColor(0.05, 0.05, 0.05, 0.85); cdBackdrop:SetBackdropBorderColor(1.0, 0.7, 0.0, 1.0) end
-        if intBackdrop then intBackdrop:SetBackdropColor(0.05, 0.05, 0.05, 0.85); intBackdrop:SetBackdropBorderColor(0.0, 0.5, 1.0, 1.0) end
-        if drinkBackdrop then drinkBackdrop:SetBackdropColor(0.05, 0.05, 0.05, 0.85); drinkBackdrop:SetBackdropBorderColor(0.0, 0.7, 1.0, 1.0) end
-        if foodBackdrop then foodBackdrop:SetBackdropColor(0.05, 0.05, 0.05, 0.85); foodBackdrop:SetBackdropBorderColor(1.0, 0.5, 0.0, 1.0) end
-        if warnBackdrop then warnBackdrop:SetBackdropColor(0.05, 0.05, 0.05, 0.9); warnBackdrop:SetBackdropBorderColor(0.8, 0.1, 0.1, 1.0) end
+        if threatBackdrop then threatBackdrop:SetBackdropColor(0.03, 0.03, 0.03, 0.9); threatBackdrop:SetBackdropBorderColor(0.8, 0.1, 0.1, 1.0) end
+        if cdBackdrop then cdBackdrop:SetBackdropColor(0.03, 0.03, 0.03, 0.9); cdBackdrop:SetBackdropBorderColor(1.0, 0.7, 0.0, 1.0) end
+        if intBackdrop then intBackdrop:SetBackdropColor(0.03, 0.03, 0.03, 0.9); intBackdrop:SetBackdropBorderColor(0.0, 0.5, 1.0, 1.0) end
+        if drinkBackdrop then drinkBackdrop:SetBackdropColor(0.03, 0.03, 0.03, 0.9); drinkBackdrop:SetBackdropBorderColor(0.0, 0.7, 1.0, 1.0) end
+        if foodBackdrop then foodBackdrop:SetBackdropColor(0.03, 0.03, 0.03, 0.9); foodBackdrop:SetBackdropBorderColor(1.0, 0.5, 0.0, 1.0) end
+        if warnBackdrop then warnBackdrop:SetBackdropColor(0.03, 0.03, 0.03, 0.95); warnBackdrop:SetBackdropBorderColor(0.8, 0.1, 0.1, 1.0) end
     elseif skin == "CLASSIC" then
         if threatBackdrop then threatBackdrop:SetBackdropColor(0.2, 0.0, 0.0, 0.95); threatBackdrop:SetBackdropBorderColor(1.0, 0.1, 0.1, 1.0) end
         if cdBackdrop then cdBackdrop:SetBackdropColor(0.2, 0.1, 0.0, 0.95); cdBackdrop:SetBackdropBorderColor(1.0, 0.8, 0.0, 1.0) end
@@ -265,47 +315,82 @@ local function UpdateBarStyles()
         if foodBackdrop then foodBackdrop:SetBackdropColor(0.3, 0.2, 0.0, 0.95); foodBackdrop:SetBackdropBorderColor(1.0, 0.6, 0.0, 1.0) end
         if warnBackdrop then warnBackdrop:SetBackdropColor(0.2, 0.0, 0.0, 0.95); warnBackdrop:SetBackdropBorderColor(1.0, 0.1, 0.1, 1.0) end
     elseif skin == "MINIMAL" then
-        if threatBackdrop then threatBackdrop:SetBackdropColor(0, 0, 0, 0.7); threatBackdrop:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.8) end
-        if cdBackdrop then cdBackdrop:SetBackdropColor(0, 0, 0, 0.7); cdBackdrop:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.8) end
-        if intBackdrop then intBackdrop:SetBackdropColor(0, 0, 0, 0.7); intBackdrop:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.8) end
-        if drinkBackdrop then drinkBackdrop:SetBackdropColor(0, 0, 0, 0.7); drinkBackdrop:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.8) end
-        if foodBackdrop then foodBackdrop:SetBackdropColor(0, 0, 0, 0.7); foodBackdrop:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.8) end
-        if warnBackdrop then warnBackdrop:SetBackdropColor(0, 0, 0, 0.8); warnBackdrop:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.8) end
+        if threatBackdrop then threatBackdrop:SetBackdropColor(0, 0, 0, 0.75); threatBackdrop:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.8) end
+        if cdBackdrop then cdBackdrop:SetBackdropColor(0, 0, 0, 0.75); cdBackdrop:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.8) end
+        if intBackdrop then intBackdrop:SetBackdropColor(0, 0, 0, 0.75); intBackdrop:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.8) end
+        if drinkBackdrop then drinkBackdrop:SetBackdropColor(0, 0, 0, 0.75); drinkBackdrop:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.8) end
+        if foodBackdrop then foodBackdrop:SetBackdropColor(0, 0, 0, 0.75); foodBackdrop:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.8) end
+        if warnBackdrop then warnBackdrop:SetBackdropColor(0, 0, 0, 0.85); warnBackdrop:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.8) end
     elseif skin == "GOLD" then
-        if threatBackdrop then threatBackdrop:SetBackdropColor(0.05, 0.05, 0.05, 0.9); threatBackdrop:SetBackdropBorderColor(1.0, 0.84, 0.0, 1.0) end
-        if cdBackdrop then cdBackdrop:SetBackdropColor(0.05, 0.05, 0.05, 0.9); cdBackdrop:SetBackdropBorderColor(1.0, 0.84, 0.0, 1.0) end
-        if intBackdrop then intBackdrop:SetBackdropColor(0.05, 0.05, 0.05, 0.9); intBackdrop:SetBackdropBorderColor(1.0, 0.84, 0.0, 1.0) end
-        if drinkBackdrop then drinkBackdrop:SetBackdropColor(0.05, 0.05, 0.05, 0.9); drinkBackdrop:SetBackdropBorderColor(1.0, 0.84, 0.0, 1.0) end
-        if foodBackdrop then foodBackdrop:SetBackdropColor(0.05, 0.05, 0.05, 0.9); foodBackdrop:SetBackdropBorderColor(1.0, 0.84, 0.0, 1.0) end
-        if warnBackdrop then warnBackdrop:SetBackdropColor(0.05, 0.05, 0.05, 0.95); warnBackdrop:SetBackdropBorderColor(1.0, 0.84, 0.0, 1.0) end
+        if threatBackdrop then threatBackdrop:SetBackdropColor(0.03, 0.03, 0.03, 0.95); threatBackdrop:SetBackdropBorderColor(1.0, 0.84, 0.0, 1.0) end
+        if cdBackdrop then cdBackdrop:SetBackdropColor(0.03, 0.03, 0.03, 0.95); cdBackdrop:SetBackdropBorderColor(1.0, 0.84, 0.0, 1.0) end
+        if intBackdrop then intBackdrop:SetBackdropColor(0.03, 0.03, 0.03, 0.95); intBackdrop:SetBackdropBorderColor(1.0, 0.84, 0.0, 1.0) end
+        if drinkBackdrop then drinkBackdrop:SetBackdropColor(0.03, 0.03, 0.03, 0.95); drinkBackdrop:SetBackdropBorderColor(1.0, 0.84, 0.0, 1.0) end
+        if foodBackdrop then foodBackdrop:SetBackdropColor(0.03, 0.03, 0.03, 0.95); foodBackdrop:SetBackdropBorderColor(1.0, 0.84, 0.0, 1.0) end
+        if warnBackdrop then warnBackdrop:SetBackdropColor(0.03, 0.03, 0.03, 0.98); warnBackdrop:SetBackdropBorderColor(1.0, 0.84, 0.0, 1.0) end
     elseif skin == "BLOOD" then
-        if threatBackdrop then threatBackdrop:SetBackdropColor(0.15, 0.0, 0.0, 0.9); threatBackdrop:SetBackdropBorderColor(0.9, 0.0, 0.0, 1.0) end
-        if cdBackdrop then cdBackdrop:SetBackdropColor(0.15, 0.0, 0.0, 0.9); cdBackdrop:SetBackdropBorderColor(0.9, 0.0, 0.0, 1.0) end
-        if intBackdrop then intBackdrop:SetBackdropColor(0.15, 0.0, 0.0, 0.9); intBackdrop:SetBackdropBorderColor(0.9, 0.0, 0.0, 1.0) end
-        if drinkBackdrop then drinkBackdrop:SetBackdropColor(0.15, 0.0, 0.0, 0.9); drinkBackdrop:SetBackdropBorderColor(0.9, 0.0, 0.0, 1.0) end
-        if foodBackdrop then foodBackdrop:SetBackdropColor(0.15, 0.0, 0.0, 0.9); foodBackdrop:SetBackdropBorderColor(0.9, 0.0, 0.0, 1.0) end
-        if warnBackdrop then warnBackdrop:SetBackdropColor(0.2, 0.0, 0.0, 0.95); warnBackdrop:SetBackdropBorderColor(1.0, 0.0, 0.0, 1.0) end
+        if threatBackdrop then threatBackdrop:SetBackdropColor(0.12, 0.0, 0.0, 0.95); threatBackdrop:SetBackdropBorderColor(0.9, 0.0, 0.0, 1.0) end
+        if cdBackdrop then cdBackdrop:SetBackdropColor(0.12, 0.0, 0.0, 0.95); cdBackdrop:SetBackdropBorderColor(0.9, 0.0, 0.0, 1.0) end
+        if intBackdrop then intBackdrop:SetBackdropColor(0.12, 0.0, 0.0, 0.95); intBackdrop:SetBackdropBorderColor(0.9, 0.0, 0.0, 1.0) end
+        if drinkBackdrop then drinkBackdrop:SetBackdropColor(0.12, 0.0, 0.0, 0.95); drinkBackdrop:SetBackdropBorderColor(0.9, 0.0, 0.0, 1.0) end
+        if foodBackdrop then foodBackdrop:SetBackdropColor(0.12, 0.0, 0.0, 0.95); foodBackdrop:SetBackdropBorderColor(0.9, 0.0, 0.0, 1.0) end
+        if warnBackdrop then warnBackdrop:SetBackdropColor(0.15, 0.0, 0.0, 0.98); warnBackdrop:SetBackdropBorderColor(1.0, 0.0, 0.0, 1.0) end
     elseif skin == "CRYSTAL" then
-        if threatBackdrop then threatBackdrop:SetBackdropColor(0.0, 0.1, 0.2, 0.9); threatBackdrop:SetBackdropBorderColor(0.0, 0.7, 1.0, 1.0) end
-        if cdBackdrop then cdBackdrop:SetBackdropColor(0.0, 0.1, 0.2, 0.9); cdBackdrop:SetBackdropBorderColor(0.0, 0.7, 1.0, 1.0) end
-        if intBackdrop then intBackdrop:SetBackdropColor(0.0, 0.1, 0.2, 0.9); intBackdrop:SetBackdropBorderColor(0.0, 0.7, 1.0, 1.0) end
-        if drinkBackdrop then drinkBackdrop:SetBackdropColor(0.0, 0.1, 0.2, 0.9); drinkBackdrop:SetBackdropBorderColor(0.0, 0.7, 1.0, 1.0) end
-        if foodBackdrop then foodBackdrop:SetBackdropColor(0.0, 0.1, 0.2, 0.9); foodBackdrop:SetBackdropBorderColor(0.0, 0.7, 1.0, 1.0) end
-        if warnBackdrop then warnBackdrop:SetBackdropColor(0.0, 0.1, 0.3, 0.95); warnBackdrop:SetBackdropBorderColor(0.0, 0.8, 1.0, 1.0) end
+        if threatBackdrop then threatBackdrop:SetBackdropColor(0.0, 0.08, 0.18, 0.95); threatBackdrop:SetBackdropBorderColor(0.0, 0.7, 1.0, 1.0) end
+        if cdBackdrop then cdBackdrop:SetBackdropColor(0.0, 0.08, 0.18, 0.95); cdBackdrop:SetBackdropBorderColor(0.0, 0.7, 1.0, 1.0) end
+        if intBackdrop then intBackdrop:SetBackdropColor(0.0, 0.08, 0.18, 0.95); intBackdrop:SetBackdropBorderColor(0.0, 0.7, 1.0, 1.0) end
+        if drinkBackdrop then drinkBackdrop:SetBackdropColor(0.0, 0.08, 0.18, 0.95); drinkBackdrop:SetBackdropBorderColor(0.0, 0.7, 1.0, 1.0) end
+        if foodBackdrop then foodBackdrop:SetBackdropColor(0.0, 0.08, 0.18, 0.95); foodBackdrop:SetBackdropBorderColor(0.0, 0.7, 1.0, 1.0) end
+        if warnBackdrop then warnBackdrop:SetBackdropColor(0.0, 0.1, 0.25, 0.98); warnBackdrop:SetBackdropBorderColor(0.0, 0.8, 1.0, 1.0) end
     elseif skin == "EMERALD" then
-        if threatBackdrop then threatBackdrop:SetBackdropColor(0.0, 0.15, 0.05, 0.9); threatBackdrop:SetBackdropBorderColor(0.1, 0.9, 0.2, 1.0) end
-        if cdBackdrop then cdBackdrop:SetBackdropColor(0.0, 0.15, 0.05, 0.9); cdBackdrop:SetBackdropBorderColor(0.1, 0.9, 0.2, 1.0) end
-        if intBackdrop then intBackdrop:SetBackdropColor(0.0, 0.15, 0.05, 0.9); intBackdrop:SetBackdropBorderColor(0.1, 0.9, 0.2, 1.0) end
-        if drinkBackdrop then drinkBackdrop:SetBackdropColor(0.0, 0.15, 0.05, 0.9); drinkBackdrop:SetBackdropBorderColor(0.1, 0.9, 0.2, 1.0) end
-        if foodBackdrop then foodBackdrop:SetBackdropColor(0.0, 0.15, 0.05, 0.9); foodBackdrop:SetBackdropBorderColor(0.1, 0.9, 0.2, 1.0) end
-        if warnBackdrop then warnBackdrop:SetBackdropColor(0.0, 0.2, 0.05, 0.95); warnBackdrop:SetBackdropBorderColor(0.1, 1.0, 0.2, 1.0) end
+        if threatBackdrop then threatBackdrop:SetBackdropColor(0.0, 0.12, 0.03, 0.95); threatBackdrop:SetBackdropBorderColor(0.1, 0.9, 0.2, 1.0) end
+        if cdBackdrop then cdBackdrop:SetBackdropColor(0.0, 0.12, 0.03, 0.95); cdBackdrop:SetBackdropBorderColor(0.1, 0.9, 0.2, 1.0) end
+        if intBackdrop then intBackdrop:SetBackdropColor(0.0, 0.12, 0.03, 0.95); intBackdrop:SetBackdropBorderColor(0.1, 0.9, 0.2, 1.0) end
+        if drinkBackdrop then drinkBackdrop:SetBackdropColor(0.0, 0.12, 0.03, 0.95); drinkBackdrop:SetBackdropBorderColor(0.1, 0.9, 0.2, 1.0) end
+        if foodBackdrop then foodBackdrop:SetBackdropColor(0.0, 0.12, 0.03, 0.95); foodBackdrop:SetBackdropBorderColor(0.1, 0.9, 0.2, 1.0) end
+        if warnBackdrop then warnBackdrop:SetBackdropColor(0.0, 0.15, 0.04, 0.98); warnBackdrop:SetBackdropBorderColor(0.1, 1.0, 0.2, 1.0) end
     elseif skin == "ARCANE" then
-        if threatBackdrop then threatBackdrop:SetBackdropColor(0.1, 0.0, 0.2, 0.9); threatBackdrop:SetBackdropBorderColor(0.8, 0.2, 1.0, 1.0) end
-        if cdBackdrop then cdBackdrop:SetBackdropColor(0.1, 0.0, 0.2, 0.9); cdBackdrop:SetBackdropBorderColor(0.8, 0.2, 1.0, 1.0) end
-        if intBackdrop then intBackdrop:SetBackdropColor(0.1, 0.0, 0.2, 0.9); intBackdrop:SetBackdropBorderColor(0.8, 0.2, 1.0, 1.0) end
-        if drinkBackdrop then drinkBackdrop:SetBackdropColor(0.1, 0.0, 0.2, 0.9); drinkBackdrop:SetBackdropBorderColor(0.8, 0.2, 1.0, 1.0) end
-        if foodBackdrop then foodBackdrop:SetBackdropColor(0.1, 0.0, 0.2, 0.9); foodBackdrop:SetBackdropBorderColor(0.8, 0.2, 1.0, 1.0) end
-        if warnBackdrop then warnBackdrop:SetBackdropColor(0.15, 0.0, 0.3, 0.95); warnBackdrop:SetBackdropBorderColor(0.9, 0.3, 1.0, 1.0) end
+        if threatBackdrop then threatBackdrop:SetBackdropColor(0.08, 0.0, 0.18, 0.95); threatBackdrop:SetBackdropBorderColor(0.8, 0.2, 1.0, 1.0) end
+        if cdBackdrop then cdBackdrop:SetBackdropColor(0.08, 0.0, 0.18, 0.95); cdBackdrop:SetBackdropBorderColor(0.8, 0.2, 1.0, 1.0) end
+        if intBackdrop then intBackdrop:SetBackdropColor(0.08, 0.0, 0.18, 0.95); intBackdrop:SetBackdropBorderColor(0.8, 0.2, 1.0, 1.0) end
+        if drinkBackdrop then drinkBackdrop:SetBackdropColor(0.08, 0.0, 0.18, 0.95); drinkBackdrop:SetBackdropBorderColor(0.8, 0.2, 1.0, 1.0) end
+        if foodBackdrop then foodBackdrop:SetBackdropColor(0.08, 0.0, 0.18, 0.95); foodBackdrop:SetBackdropBorderColor(0.8, 0.2, 1.0, 1.0) end
+        if warnBackdrop then warnBackdrop:SetBackdropColor(0.1, 0.0, 0.25, 0.98); warnBackdrop:SetBackdropBorderColor(0.9, 0.3, 1.0, 1.0) end
+    elseif skin == "MATRIX" then
+        if threatBackdrop then threatBackdrop:SetBackdropColor(0.0, 0.05, 0.0, 0.95); threatBackdrop:SetBackdropBorderColor(0.0, 1.0, 0.3, 1.0) end
+        if cdBackdrop then cdBackdrop:SetBackdropColor(0.0, 0.05, 0.0, 0.95); cdBackdrop:SetBackdropBorderColor(0.0, 1.0, 0.3, 1.0) end
+        if intBackdrop then intBackdrop:SetBackdropColor(0.0, 0.05, 0.0, 0.95); intBackdrop:SetBackdropBorderColor(0.0, 1.0, 0.3, 1.0) end
+        if drinkBackdrop then drinkBackdrop:SetBackdropColor(0.0, 0.05, 0.0, 0.95); drinkBackdrop:SetBackdropBorderColor(0.0, 1.0, 0.3, 1.0) end
+        if foodBackdrop then foodBackdrop:SetBackdropColor(0.0, 0.05, 0.0, 0.95); foodBackdrop:SetBackdropBorderColor(0.0, 1.0, 0.3, 1.0) end
+        if warnBackdrop then warnBackdrop:SetBackdropColor(0.0, 0.08, 0.0, 0.98); warnBackdrop:SetBackdropBorderColor(0.0, 1.0, 0.3, 1.0) end
+    elseif skin == "CARBON" then
+        if threatBackdrop then threatBackdrop:SetBackdropColor(0.1, 0.1, 0.12, 0.95); threatBackdrop:SetBackdropBorderColor(0.5, 0.5, 0.5, 1.0) end
+        if cdBackdrop then cdBackdrop:SetBackdropColor(0.1, 0.1, 0.12, 0.95); cdBackdrop:SetBackdropBorderColor(0.5, 0.5, 0.5, 1.0) end
+        if intBackdrop then intBackdrop:SetBackdropColor(0.1, 0.1, 0.12, 0.95); intBackdrop:SetBackdropBorderColor(0.5, 0.5, 0.5, 1.0) end
+        if drinkBackdrop then drinkBackdrop:SetBackdropColor(0.1, 0.1, 0.12, 0.95); drinkBackdrop:SetBackdropBorderColor(0.5, 0.5, 0.5, 1.0) end
+        if foodBackdrop then foodBackdrop:SetBackdropColor(0.1, 0.1, 0.12, 0.95); foodBackdrop:SetBackdropBorderColor(0.5, 0.5, 0.5, 1.0) end
+        if warnBackdrop then warnBackdrop:SetBackdropColor(0.12, 0.12, 0.15, 0.98); warnBackdrop:SetBackdropBorderColor(0.7, 0.7, 0.7, 1.0) end
+    elseif skin == "FROST" then
+        if threatBackdrop then threatBackdrop:SetBackdropColor(0.0, 0.1, 0.2, 0.95); threatBackdrop:SetBackdropBorderColor(0.4, 0.8, 1.0, 1.0) end
+        if cdBackdrop then cdBackdrop:SetBackdropColor(0.0, 0.1, 0.2, 0.95); cdBackdrop:SetBackdropBorderColor(0.4, 0.8, 1.0, 1.0) end
+        if intBackdrop then intBackdrop:SetBackdropColor(0.0, 0.1, 0.2, 0.95); intBackdrop:SetBackdropBorderColor(0.4, 0.8, 1.0, 1.0) end
+        if drinkBackdrop then drinkBackdrop:SetBackdropColor(0.0, 0.1, 0.2, 0.95); drinkBackdrop:SetBackdropBorderColor(0.4, 0.8, 1.0, 1.0) end
+        if foodBackdrop then foodBackdrop:SetBackdropColor(0.0, 0.1, 0.2, 0.95); foodBackdrop:SetBackdropBorderColor(0.4, 0.8, 1.0, 1.0) end
+        if warnBackdrop then warnBackdrop:SetBackdropColor(0.0, 0.15, 0.3, 0.98); warnBackdrop:SetBackdropBorderColor(0.5, 0.9, 1.0, 1.0) end
+    elseif skin == "SUNSET" then
+        if threatBackdrop then threatBackdrop:SetBackdropColor(0.2, 0.05, 0.0, 0.95); threatBackdrop:SetBackdropBorderColor(1.0, 0.4, 0.0, 1.0) end
+        if cdBackdrop then cdBackdrop:SetBackdropColor(0.2, 0.05, 0.0, 0.95); cdBackdrop:SetBackdropBorderColor(1.0, 0.4, 0.0, 1.0) end
+        if intBackdrop then intBackdrop:SetBackdropColor(0.2, 0.05, 0.0, 0.95); intBackdrop:SetBackdropBorderColor(1.0, 0.4, 0.0, 1.0) end
+        if drinkBackdrop then drinkBackdrop:SetBackdropColor(0.2, 0.05, 0.0, 0.95); drinkBackdrop:SetBackdropBorderColor(1.0, 0.4, 0.0, 1.0) end
+        if foodBackdrop then foodBackdrop:SetBackdropColor(0.2, 0.05, 0.0, 0.95); foodBackdrop:SetBackdropBorderColor(1.0, 0.4, 0.0, 1.0) end
+        if warnBackdrop then warnBackdrop:SetBackdropColor(0.3, 0.08, 0.0, 0.98); warnBackdrop:SetBackdropBorderColor(1.0, 0.5, 0.0, 1.0) end
+    elseif skin == "RETRO" then
+        if threatBackdrop then threatBackdrop:SetBackdropColor(0.15, 0.0, 0.15, 0.95); threatBackdrop:SetBackdropBorderColor(1.0, 0.0, 0.8, 1.0) end
+        if cdBackdrop then cdBackdrop:SetBackdropColor(0.15, 0.0, 0.15, 0.95); cdBackdrop:SetBackdropBorderColor(1.0, 0.0, 0.8, 1.0) end
+        if intBackdrop then intBackdrop:SetBackdropColor(0.15, 0.0, 0.15, 0.95); intBackdrop:SetBackdropBorderColor(1.0, 0.0, 0.8, 1.0) end
+        if drinkBackdrop then drinkBackdrop:SetBackdropColor(0.15, 0.0, 0.15, 0.95); drinkBackdrop:SetBackdropBorderColor(1.0, 0.0, 0.8, 1.0) end
+        if foodBackdrop then foodBackdrop:SetBackdropColor(0.15, 0.0, 0.15, 0.95); foodBackdrop:SetBackdropBorderColor(1.0, 0.0, 0.8, 1.0) end
+        if warnBackdrop then warnBackdrop:SetBackdropColor(0.2, 0.0, 0.2, 0.98); warnBackdrop:SetBackdropBorderColor(1.0, 0.1, 0.9, 1.0) end
     end
 
     if threatText then threatText:SetFont("Fonts\\FRIZQT__.TTF", fSize, "OUTLINE") end
@@ -320,7 +405,7 @@ end
 -- WARNBALKEN (BANNER FRAME)
 -------------------------------------------------------------------------------
 warnFrame = CreateFrame("Frame", "ATMWarnFrame", UIParent)
-warnFrame:SetWidth(380)
+warnFrame:SetWidth(440)
 warnFrame:SetHeight(42)
 warnFrame:SetPoint("CENTER", UIParent, "CENTER", ATM_Settings.warnX or 0, ATM_Settings.warnY or 180)
 warnFrame:SetBackdrop({
@@ -428,7 +513,7 @@ threatBar:SetScript("OnUpdate", function(self, elapsed)
     if threatTimer > 0.2 then
         threatTimer = 0
         
-        if not ATM_Settings.showTankThreatBar or not InCombatLockdown() then
+        if ATM_Settings.disableAllBars or not ATM_Settings.showTankThreatBar or not InCombatLockdown() then
             self:Hide()
             return
         end
@@ -466,7 +551,7 @@ threatBar:SetScript("OnUpdate", function(self, elapsed)
 end)
 
 -------------------------------------------------------------------------------
--- TANK DEF-CD MONITOR (STATUSLEISTE)
+-- TANK DEF-CD MONITOR
 -------------------------------------------------------------------------------
 cdBar = CreateFrame("StatusBar", "ATMCdBar", UIParent)
 cdBar:SetWidth(ATM_Settings.threatWidth or 400)
@@ -512,7 +597,7 @@ cdBar:SetScript("OnDragStop", function(self)
 end)
 
 local function UpdateCDMonitorDisplay(tankName, spellName, duration)
-    if not ATM_Settings.showCDMonitor or not IsInInstanceArea() then return end
+    if ATM_Settings.disableAllBars or not ATM_Settings.showCDMonitor or not IsInInstanceArea() then return end
     UpdateBarStyles()
     
     cdBar:Show()
@@ -520,7 +605,7 @@ local function UpdateCDMonitorDisplay(tankName, spellName, duration)
     cdBar:SetMinMaxValues(0, totalTime)
     
     local timeLeft = totalTime
-    cdText:SetText(string.format("%s: %s", tankName, spellName))
+    cdText:SetText(string.format("%s: %s", ShortenName(tankName, 12), spellName))
     cdText:SetTextColor(1.0, 0.85, 0.0, 1.0)
     cdBar:SetStatusBarColor(0.8, 0.5, 0.0)
     
@@ -539,7 +624,7 @@ local function UpdateCDMonitorDisplay(tankName, spellName, duration)
 end
 
 -------------------------------------------------------------------------------
--- INTERRUPT-MONITOR (STATUSLEISTE)
+-- INTERRUPT-MONITOR
 -------------------------------------------------------------------------------
 intBar = CreateFrame("StatusBar", "ATMIntBar", UIParent)
 intBar:SetWidth(ATM_Settings.threatWidth or 400)
@@ -585,7 +670,7 @@ intBar:SetScript("OnDragStop", function(self)
 end)
 
 local function UpdateInterruptDisplay(playerName, spellName)
-    if not ATM_Settings.showInterruptBar or not IsInInstanceArea() then return end
+    if ATM_Settings.disableAllBars or not ATM_Settings.showInterruptBar or not IsInInstanceArea() then return end
     UpdateBarStyles()
     
     intBar:Show()
@@ -593,7 +678,7 @@ local function UpdateInterruptDisplay(playerName, spellName)
     intBar:SetMinMaxValues(0, totalTime)
     
     local timeLeft = totalTime
-    intText:SetText(string.format("Interrupt: %s (%s)", playerName, spellName))
+    intText:SetText(string.format("Unterbrochen: %s (%s)", ShortenName(playerName, 12), spellName))
     intText:SetTextColor(0.2, 0.9, 1.0, 1.0)
     intBar:SetStatusBarColor(0.1, 0.6, 1.0)
     
@@ -612,7 +697,7 @@ local function UpdateInterruptDisplay(playerName, spellName)
 end
 
 -------------------------------------------------------------------------------
--- TRINK-STATUSLEISTE (MEGA ICONS: 30x30)
+-- TRINK-STATUSLEISTE
 -------------------------------------------------------------------------------
 drinkBar = CreateFrame("StatusBar", "ATMDrinkBar", UIParent)
 drinkBar:SetWidth(ATM_Settings.threatWidth or 400)
@@ -658,7 +743,7 @@ drinkBar:SetScript("OnDragStop", function(self)
 end)
 
 -------------------------------------------------------------------------------
--- ESS-STATUSLEISTE (MEGA ICONS: 30x30)
+-- ESS-STATUSLEISTE
 -------------------------------------------------------------------------------
 foodBar = CreateFrame("StatusBar", "ATMFoodBar", UIParent)
 foodBar:SetWidth(ATM_Settings.threatWidth or 400)
@@ -704,7 +789,7 @@ foodBar:SetScript("OnDragStop", function(self)
 end)
 
 local function CheckGroupDrinkingAndFood()
-    if not IsInInstanceArea() or InCombatLockdown() then
+    if ATM_Settings.disableAllBars or not IsInInstanceArea() or InCombatLockdown() then
         if not ischimeraTestingMode then
             drinkBar:Hide()
             foodBar:Hide()
@@ -712,59 +797,67 @@ local function CheckGroupDrinkingAndFood()
         return
     end
 
-    local drinkingList = {}
-    local foodList = {}
+    local drinkingNames = {}
+    local foodNames = {}
 
-    local isSelfDrinking, isSelfEating = false, false
-    for i = 1, 40 do
-        local name = UnitBuff("player", i)
-        if name then
-            if name:find("Drink") or name:find("Trinken") then
-                isSelfDrinking = true
-            end
-            if name:find("Food") or name:find("Essen") or name:find("Well Fed") or name:find("Essen & Trinken") then
-                isSelfEating = true
+    local function IsActuallyDrinkingOrEating(unit)
+        local isDrinking, isEating = false, false
+        for i = 1, 40 do
+            local name, _, _, _, _, _, _, _, _, _, spellId = UnitBuff(unit, i)
+            if name then
+                if name == "Trinken" or name == "Drink" or name:find("Trinken") or name:find("Drink") then
+                    isDrinking = true
+                end
+                if name == "Essen" or name == "Food" or name == "Essen & Trinken" or name:find("^Essen") or name:find("^Food") or spellId == 433 or spellId == 434 then
+                    isEating = true
+                end
             end
         end
+        return isDrinking, isEating
     end
-    if isSelfDrinking then table.insert(drinkingList, UnitName("player") or "Du") end
-    if isSelfEating then table.insert(foodList, UnitName("player") or "Du") end
+
+    -- STRENGERE PRÜFUNG: Auch für den Spieler ("player") wird jetzt strikt per Buff-Funktion geprüft!
+    local unitsToCheck = {}
+    table.insert(unitsToCheck, "player")
 
     local numMembers = GetNumRaidMembers() > 0 and GetNumRaidMembers() or GetNumPartyMembers()
     local prefix = GetNumRaidMembers() > 0 and "raid" or "party"
 
     for i = 1, numMembers do
-        local unit = prefix .. i
-        if UnitExists(unit) then
+        table.insert(unitsToCheck, prefix .. i)
+    end
+
+    for _, unit in ipairs(unitsToCheck) do
+        if UnitExists(unit) and not UnitIsDeadOrGhost(unit) then
             local unitName = UnitName(unit)
-            for b = 1, 40 do
-                local buffName = UnitBuff(unit, b)
-                if buffName then
-                    if (buffName:find("Drink") or buffName:find("Trinken")) and unitName then
-                        table.insert(drinkingList, unitName)
-                    end
-                    if (buffName:find("Food") or buffName:find("Essen") or buffName:find("Well Fed") or buffName:find("Essen & Trinken")) and unitName then
-                        table.insert(foodList, unitName)
-                    end
-                end
+            local uDrink, uEat = IsActuallyDrinkingOrEating(unit)
+            if uDrink and unitName then
+                table.insert(drinkingNames, unitName)
+            end
+            if uEat and unitName then
+                table.insert(foodNames, unitName)
             end
         end
     end
 
-    if ATM_Settings.showDrinkBar and #drinkingList > 0 then
+    if ATM_Settings.showDrinkBar and #drinkingNames > 0 then
         UpdateBarStyles()
         drinkBar:Show()
         drinkBar:SetValue(100)
-        drinkText:SetText("|TInterface\\Icons\\INV_Drink_07:30:30:0:0|t " .. table.concat(drinkingList, ", "))
+        local coloredList = {}
+        for _, n in ipairs(drinkingNames) do table.insert(coloredList, FormatColoredName(n)) end
+        drinkText:SetText("|TInterface\\Icons\\INV_Drink_07:30:30:0:0|t " .. table.concat(coloredList, ", "))
     else
         drinkBar:Hide()
     end
 
-    if ATM_Settings.showFoodBar and #foodList > 0 then
+    if ATM_Settings.showFoodBar and #foodNames > 0 then
         UpdateBarStyles()
         foodBar:Show()
         foodBar:SetValue(100)
-        foodText:SetText("|TInterface\\Icons\\INV_Misc_Food_15:30:30:0:0|t " .. table.concat(foodList, ", "))
+        local coloredList = {}
+        for _, n in ipairs(foodNames) do table.insert(coloredList, FormatColoredName(n)) end
+        foodText:SetText("|TInterface\\Icons\\INV_Misc_Food_15:30:30:0:0|t " .. table.concat(coloredList, ", "))
     else
         foodBar:Hide()
     end
@@ -776,17 +869,19 @@ end
 function RunTestMode()
     ischimeraTestingMode = true
     UpdateBarStyles()
-    DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM TEST]|r Starte Testmodus (v1.77)...")
+    DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM TEST]|r Starte Testmodus (v1.78)...")
 
     PlayCustomSound(ATM_Settings.alertSound)
     TriggerScreenFlash()
     local lang = ATM_Settings.language or "DE"
-    ShowBannerMessage(string.format(L[lang].aggroScreen, "Testmob"), 1.0, 0.1, 0.1, 2.5)
+    ShowBannerMessage(L[lang].aggroScreen, 1.0, 0.1, 0.1, 2.5)
     
-    threatBar:Show()
-    threatBar:SetValue(100)
-    threatBar:SetStatusBarColor(0.9, 0.1, 0.1)
-    threatText:SetText("Tank Aggro: VERLOREN (Test)")
+    if not ATM_Settings.disableAllBars then
+        threatBar:Show()
+        threatBar:SetValue(100)
+        threatBar:SetStatusBarColor(0.9, 0.1, 0.1)
+        threatText:SetText("Tank Aggro: VERLOREN (Test)")
+    end
 
     UpdateCDMonitorDisplay("TestTank", "Schildwall", 12)
     UpdateInterruptDisplay("TestSpieler", "Feuerball")
@@ -796,8 +891,10 @@ function RunTestMode()
     testTimer:SetScript("OnUpdate", function(self, elapsed)
         step = step + elapsed
         if step > 2.5 and step < 2.6 then
-            threatBar:SetStatusBarColor(0.0, 0.8, 0.2)
-            threatText:SetText("Tank Aggro: Sicher (OK)")
+            if not ATM_Settings.disableAllBars then
+                threatBar:SetStatusBarColor(0.0, 0.8, 0.2)
+                threatText:SetText("Tank Aggro: Sicher (OK)")
+            end
             ShowBannerMessage(string.format(L[lang].defCD, "TestTank", "Schildwall", 12), 0.0, 1.0, 0.2, 2.5)
         elseif step > 5.0 and step < 5.1 then
             PlayCustomSound(ATM_Settings.tankLostSound)
@@ -808,15 +905,15 @@ function RunTestMode()
             PlayCustomSound(ATM_Settings.interruptSound)
             ShowBannerMessage(string.format(L[lang].interrupt, "Spieler", "Feuerball"), 1.0, 0.5, 0.0, 2.5)
         elseif step > 12.5 and step < 12.6 then
-            if ATM_Settings.showDrinkBar then
+            if not ATM_Settings.disableAllBars and ATM_Settings.showDrinkBar then
                 drinkBar:Show()
                 drinkBar:SetValue(100)
-                drinkText:SetText("|TInterface\\Icons\\INV_Drink_07:30:30:0:0|t Chimera, TestHeiler")
+                drinkText:SetText("|TInterface\\Icons\\INV_Drink_07:30:30:0:0|t |cff25c6e8Chimera|r, |cffffffffHeilerXYZ|r")
             end
-            if ATM_Settings.showFoodBar then
+            if not ATM_Settings.disableAllBars and ATM_Settings.showFoodBar then
                 foodBar:Show()
                 foodBar:SetValue(100)
-                foodText:SetText("|TInterface\\Icons\\INV_Misc_Food_15:30:30:0:0|t TankDD, TestDD")
+                foodText:SetText("|TInterface\\Icons\\INV_Misc_Food_15:30:30:0:0|t |cffc79c6eTankDD|r, |cffffd100TestDD|r")
             end
         elseif step > 16.5 and step < 16.6 then
             drinkBar:Hide()
@@ -841,9 +938,9 @@ end
 -- SPOTT-ZAUBER & DEFENSIV-COOLDOWNS
 -------------------------------------------------------------------------------
 local TAUNT_SPELLS = {
-    [355]   = "Spott", ["Spott"] = "Spott", ["Taunt"] = "Taunt",
+    [355]   = "Spott", ["Spott"] = "Spott", ["Taunt"] = "Spott",
     [62124] = "Hand der Abrechnung", ["Hand der Abrechnung"] = "Hand der Abrechnung", ["Hand of Reckoning"] = "Hand of Reckoning",
-    [49576] = "Todesgriff", ["Todesgriff"] = "Todesgriff", ["Death Grip"] = "Death Grip",
+    [49576] = "Todesgriff", ["Todesgriff"] = "Todesgriff", ["Death Grip"] = "Todesgriff",
     [56222] = "Dunkler Befehl", ["Dunkler Befehl"] = "Dunkler Befehl", ["Dark Command"] = "Dark Command",
     [6795]  = "Knurren", ["Knurren"] = "Knurren", ["Growl"] = "Growl"
 }
@@ -851,55 +948,55 @@ local TAUNT_SPELLS = {
 local TANK_DEF_SPELLS = {
     [871] = { name = "Schildwall", duration = 12 },
     ["Schildwall"] = { name = "Schildwall", duration = 12 },
-    ["Shield Wall"] = { name = "Shield Wall", duration = 12 },
+    ["Shield Wall"] = { name = "Schildwall", duration = 12 },
     [12975] = { name = "Letztes Gefecht", duration = 20 },
     ["Letztes Gefecht"] = { name = "Letztes Gefecht", duration = 20 },
-    ["Last Stand"] = { name = "Last Stand", duration = 20 },
+    ["Last Stand"] = { name = "Letztes Gefecht", duration = 20 },
     [498] = { name = "Göttlicher Schutz", duration = 12 },
     ["Göttlicher Schutz"] = { name = "Göttlicher Schutz", duration = 12 },
-    ["Divine Protection"] = { name = "Divine Protection", duration = 12 },
+    ["Divine Protection"] = { name = "Göttlicher Schutz", duration = 12 },
     [31850] = { name = "Unermüdlicher Hüter", duration = 10 },
     ["Unermüdlicher Hüter"] = { name = "Unermüdlicher Hüter", duration = 10 },
-    ["Ardent Defender"] = { name = "Ardent Defender", duration = 10 },
+    ["Ardent Defender"] = { name = "Unermüdlicher Hüter", duration = 10 },
     [48792] = { name = "Eisige Gegenwehr", duration = 12 },
     ["Eisige Gegenwehr"] = { name = "Eisige Gegenwehr", duration = 12 },
-    ["Icebound Fortitude"] = { name = "Icebound Fortitude", duration = 12 },
+    ["Icebound Fortitude"] = { name = "Eisige Gegenwehr", duration = 12 },
     [55233] = { name = "Vampirblut", duration = 10 },
     ["Vampirblut"] = { name = "Vampirblut", duration = 10 },
-    ["Vampiric Blood"] = { name = "Vampiric Blood", duration = 10 },
+    ["Vampiric Blood"] = { name = "Vampirblut", duration = 10 },
     [61336] = { name = "Überlebensinstinkte", duration = 20 },
     ["Überlebensinstinkte"] = { name = "Überlebensinstinkte", duration = 20 },
-    ["Survival Instincts"] = { name = "Survival Instincts", duration = 20 },
+    ["Survival Instincts"] = { name = "Überlebensinstinkte", duration = 20 },
     [22812] = { name = "Baumrinde", duration = 12 },
     ["Baumrinde"] = { name = "Baumrinde", duration = 12 },
-    ["Barkskin"] = { name = "Barkskin", duration = 12 }
+    ["Barkskin"] = { name = "Baumrinde", duration = 12 }
 }
 
--- PERFEKTE WARNMELDUNGEN MIT 30x30 XXL-ICONS (v1.77)
+-- WARNMELDUNGEN (v1.78)
 L = {
     EN = {
         aggroChat = "[AGGRO] >>> Aggro on Healer %s! Please taunt! <<<",
-        aggroScreen = "|TInterface\\Icons\\Ability_Warrior_ShieldBash:30:30:0:0|t |cffff2222AGGRO GEZOGEN von %s!|r |TInterface\\Icons\\Ability_Warrior_ShieldBash:30:30:0:0|t",
+        aggroScreen = "|TInterface\\Icons\\Ability_Warrior_ShieldBash:30:30:0:0|t  |cffff2222AGGRO GEZOGEN!|r  |TInterface\\Icons\\Ability_Warrior_ShieldBash:30:30:0:0|t",
         oom = "[ATM] OOM / Low Mana! Careful!",
         drinking = "[ATM] Is drinking (Mana: %d%%) - Please wait!",
-        tankDied = "|TInterface\\Icons\\Spell_Shadow_DeathCoil:30:30:0:0|t |cffff0000TANK GESTORBEN!|r |TInterface\\Icons\\Spell_Shadow_DeathCoil:30:30:0:0|t",
-        tankLow = "|TInterface\\Icons\\Ability_Rogue_FeignDeath:30:30:0:0|t |cffff8800TANK KRITISCH (%d%%)!|r",
-        defCD = "|TInterface\\Icons\\Ability_Warrior_ShieldBarrier:30:30:0:0|t |cff00ff00%s: %s (%ds)|r",
-        tauntFail = "|TInterface\\Icons\\Spell_Nature_WispSplode:30:30:0:0|t |cffff4444SPOTT VERFEHLT (%s) durch %s auf %s!|r",
-        tankSwap = "|TInterface\\Icons\\Ability_DualWield:30:30:0:0|t |cff00ccffTaunt-Swap: %s (%s) -> %s|r",
-        interrupt = "|TInterface\\Icons\\Spell_Frost_WindWalk:30:30:0:0|t |cffff9900Interrupt: %s (%s)|r"
+        tankDied = "|TInterface\\Icons\\Spell_Shadow_DeathCoil:30:30:0:0|t  |cffff0000TANK GESTORBEN!|r  |TInterface\\Icons\\Spell_Shadow_DeathCoil:30:30:0:0|t",
+        tankLow = "|TInterface\\Icons\\Ability_Rogue_FeignDeath:30:30:0:0|t  |cffff8800TANK KRITISCH (%d%%)!|r",
+        defCD = "|TInterface\\Icons\\Ability_Warrior_ShieldBarrier:30:30:0:0|t  |cff00ff00%s: %s (%ds)|r",
+        tauntFail = "|TInterface\\Icons\\Spell_Nature_WispSplode:30:30:0:0|t  |cffff4444SPOTT VERFEHLT (%s) durch %s auf %s!|r",
+        tankSwap = "|TInterface\\Icons\\Ability_DualWield:30:30:0:0|t  |cff00ccffSpott-Wechsel: %s (%s) -> %s|r",
+        interrupt = "|TInterface\\Icons\\Spell_Frost_WindWalk:30:30:0:0|t  |cffff9900Unterbrochen: %s (%s)|r"
     },
     DE = {
         aggroChat = "[AGGRO] >>> Aggro auf Heiler %s! Bitte abspotten! <<<",
-        aggroScreen = "|TInterface\\Icons\\Ability_Warrior_ShieldBash:30:30:0:0|t |cffff2222AGGRO GEZOGEN von %s!|r |TInterface\\Icons\\Ability_Warrior_ShieldBash:30:30:0:0|t",
+        aggroScreen = "|TInterface\\Icons\\Ability_Warrior_ShieldBash:30:30:0:0|t  |cffff2222AGGRO GEZOGEN!|r  |TInterface\\Icons\\Ability_Warrior_ShieldBash:30:30:0:0|t",
         oom = "[ATM] OOM / Wenig Mana! Vorsicht!",
         drinking = "[ATM] Trinkt gerade (Mana: %d%%) - Bitte warten!",
-        tankDied = "|TInterface\\Icons\\Spell_Shadow_DeathCoil:30:30:0:0|t |cffff0000TANK GESTORBEN!|r |TInterface\\Icons\\Spell_Shadow_DeathCoil:30:30:0:0|t",
-        tankLow = "|TInterface\\Icons\\Ability_Rogue_FeignDeath:30:30:0:0|t |cffff8800TANK KRITISCH (%d%%)!|r",
-        defCD = "|TInterface\\Icons\\Ability_Warrior_ShieldBarrier:30:30:0:0|t |cff00ff00%s: %s (%ds)|r",
-        tauntFail = "|TInterface\\Icons\\Spell_Nature_WispSplode:30:30:0:0|t |cffff4444SPOTT VERFEHLT (%s) durch %s auf %s!|r",
-        tankSwap = "|TInterface\\Icons\\Ability_DualWield:30:30:0:0|t |cff00ccffTaunt-Swap: %s (%s) -> %s|r",
-        interrupt = "|TInterface\\Icons\\Spell_Frost_WindWalk:30:30:0:0|t |cffff9900Interrupt: %s (%s)|r"
+        tankDied = "|TInterface\\Icons\\Spell_Shadow_DeathCoil:30:30:0:0|t  |cffff0000TANK GESTORBEN!|r  |TInterface\\Icons\\Spell_Shadow_DeathCoil:30:30:0:0|t",
+        tankLow = "|TInterface\\Icons\\Ability_Rogue_FeignDeath:30:30:0:0|t  |cffff8800TANK KRITISCH (%d%%)!|r",
+        defCD = "|TInterface\\Icons\\Ability_Warrior_ShieldBarrier:30:30:0:0|t  |cff00ff00%s: %s (%ds)|r",
+        tauntFail = "|TInterface\\Icons\\Spell_Nature_WispSplode:30:30:0:0|t  |cffff4444SPOTT VERFEHLT (%s) durch %s auf %s!|r",
+        tankSwap = "|TInterface\\Icons\\Ability_DualWield:30:30:0:0|t  |cff00ccffSpott-Wechsel: %s (%s) -> %s|r",
+        interrupt = "|TInterface\\Icons\\Spell_Frost_WindWalk:30:30:0:0|t  |cffff9900Unterbrochen: %s (%s)|r"
     }
 }
 
@@ -968,7 +1065,7 @@ local function FindAndMarkTank()
 
     currentTankUnit = targetUnit or "party1" or "player"
     if targetUnit and targetUnit ~= "player" then
-        if GetRaidTargetIndex(targetUnit) ~= ATM_Settings.marker then
+        if not GetRaidTargetIndex(targetUnit) then
             SetRaidTarget(targetUnit, ATM_Settings.marker)
         end
     end
@@ -977,14 +1074,10 @@ end
 local function CheckThreatStatus()
     if not ATM_Settings.aggroAlert or not InCombatLockdown() then return end
     local hasAggro = false
-    local attackingMob = "Unbekannt"
 
     local globalStatus = UnitThreatSituation("player")
     if globalStatus and globalStatus >= 2 then 
         hasAggro = true 
-        if UnitExists("target") and UnitCanAttack("player", "target") then
-            attackingMob = UnitName("target") or "Unbekannt"
-        end
     end
 
     if not hasAggro then
@@ -994,7 +1087,6 @@ local function CheckThreatStatus()
                 local _, status = UnitDetailedThreatSituation("player", unit)
                 if status and status >= 2 then
                     hasAggro = true
-                    attackingMob = UnitName(unit) or "Gegner"
                     break
                 end
             end
@@ -1008,7 +1100,7 @@ local function CheckThreatStatus()
             PlayCustomSound(ATM_Settings.alertSound)
             TriggerScreenFlash()
             local lang = ATM_Settings.language or "DE"
-            ShowBannerMessage(string.format(L[lang].aggroScreen, attackingMob), 1.0, 0.1, 0.1, 3.5)
+            ShowBannerMessage(L[lang].aggroScreen, 1.0, 0.1, 0.1, 3.5)
             local text = string.format(L[lang].aggroChat, UnitName("player"))
             local chatType = GetNumRaidMembers() > 0 and "RAID" or (GetNumPartyMembers() > 0 and "PARTY" or nil)
             if chatType then SendChatMessage(text, chatType) end
@@ -1038,7 +1130,7 @@ local function CheckStatus()
     if ATM_Settings.drinkWhisper and currentTankUnit and UnitExists(currentTankUnit) then
         for i = 1, 40 do
             local name = UnitBuff("player", i)
-            if name and (name:find("Drink") or name:find("Trinken")) then
+            if name and (name == "Trinken" or name == "Drink" or name:find("Trinken")) then
                 local now = GetTime()
                 if (now - lastDrinkWhisper) > 15 then
                     lastDrinkWhisper = now
@@ -1069,6 +1161,29 @@ local function CheckStatus()
     end
 end
 
+local function IsGroupMemberOrPlayer(guid, name)
+    if not guid then return false end
+    if guid == UnitGUID("player") then return true end
+    
+    local numRaid = GetNumRaidMembers()
+    if numRaid > 0 then
+        for i = 1, numRaid do
+            if UnitGUID("raid" .. i) == guid then return true end
+        end
+    else
+        local numParty = GetNumPartyMembers()
+        if numParty > 0 then
+            for i = 1, numParty do
+                if UnitGUID("party" .. i) == guid then return true end
+            end
+        end
+    end
+    if name and (UnitInParty(name) or UnitInRaid(name) or name == UnitName("player")) then
+        return true
+    end
+    return false
+end
+
 frame:RegisterEvent("ADDON_LOADED")
 frame:RegisterEvent("PARTY_MEMBERS_CHANGED")
 frame:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -1097,6 +1212,8 @@ frame:SetScript("OnEvent", function(self, event, ...)
         if not IsInInstanceArea() then return end
         local timestamp, subEvent, sourceGUID, sourceName, sourceFlags, destGUID, destName, destFlags, spellID, spellName, _, extraArg1, extraArg2 = ...
         
+        local isPlayerAction = IsGroupMemberOrPlayer(sourceGUID, sourceName)
+
         if ATM_Settings.tankDeathSound and currentTankUnit then
             if subEvent == "UNIT_DIED" and destGUID == UnitGUID(currentTankUnit) then
                 PlayCustomSound(ATM_Settings.tankLostSound)
@@ -1104,45 +1221,45 @@ frame:SetScript("OnEvent", function(self, event, ...)
             end
         end
 
-        if ATM_Settings.tauntAlert and currentTankUnit then
+        if ATM_Settings.tauntAlert and currentTankUnit and isPlayerAction then
             if subEvent == "SPELL_MISSED" and (sourceGUID == UnitGUID(currentTankUnit) or (sourceName and sourceName == UnitName(currentTankUnit))) then
                 if TAUNT_SPELLS[spellID] or TAUNT_SPELLS[spellName] then
                     local spellUsed = TAUNT_SPELLS[spellID] or TAUNT_SPELLS[spellName]
-                    local targetMob = destName or "Gegner"
-                    local activeTank = sourceName or UnitName(currentTankUnit) or "Tank"
+                    local targetMob = ShortenName(destName or "Gegner", 15)
+                    local activeTank = ShortenName(sourceName or UnitName(currentTankUnit) or "Tank", 12)
                     PlayCustomSound(ATM_Settings.tankLostSound)
                     ShowBannerMessage(string.format(L[lang].tauntFail, spellUsed, activeTank, targetMob), 1.0, 0.1, 0.1, 3.5)
                 end
             end
         end
 
-        if ATM_Settings.tankDefAlert then
+        if ATM_Settings.tankDefAlert and isPlayerAction then
             if (subEvent == "SPELL_CAST_SUCCESS" or subEvent == "SPELL_AURA_APPLIED" or subEvent == "SPELL_CAST_START") then
                 local cdInfo = TANK_DEF_SPELLS[spellID] or TANK_DEF_SPELLS[spellName]
                 if cdInfo then
                     local tankName = sourceName or "Tank"
-                    ShowBannerMessage(string.format(L[lang].defCD, tankName, cdInfo.name, cdInfo.duration), 0.0, 1.0, 0.2, 3.5)
-                    if ATM_Settings.showCDMonitor then
+                    ShowBannerMessage(string.format(L[lang].defCD, ShortenName(tankName, 12), cdInfo.name, cdInfo.duration), 0.0, 1.0, 0.2, 3.5)
+                    if not ATM_Settings.disableAllBars and ATM_Settings.showCDMonitor then
                         UpdateCDMonitorDisplay(tankName, cdInfo.name, cdInfo.duration)
                     end
                 end
             end
         end
 
-        if ATM_Settings.showTankSwap and subEvent == "SPELL_CAST_SUCCESS" then
+        if ATM_Settings.showTankSwap and subEvent == "SPELL_CAST_SUCCESS" and isPlayerAction then
             if TAUNT_SPELLS[spellID] or TAUNT_SPELLS[spellName] then
                 if sourceName and destName then
                     local spellUsed = TAUNT_SPELLS[spellID] or TAUNT_SPELLS[spellName]
-                    ShowBannerMessage(string.format(L[lang].tankSwap, sourceName, spellUsed, destName), 0.0, 0.8, 1.0, 3.0)
+                    ShowBannerMessage(string.format(L[lang].tankSwap, ShortenName(sourceName, 10), spellUsed, ShortenName(destName, 10)), 0.0, 0.8, 1.0, 3.0)
                 end
             end
         end
 
-        if ATM_Settings.showInterrupt and subEvent == "SPELL_INTERRUPT" then
+        if ATM_Settings.showInterrupt and subEvent == "SPELL_INTERRUPT" and isPlayerAction then
             local interruptedSpell = extraArg2 or "Zauber"
             PlayCustomSound(ATM_Settings.interruptSound)
-            ShowBannerMessage(string.format(L[lang].interrupt, sourceName or "Spieler", interruptedSpell), 1.0, 0.5, 0.0, 3.0)
-            if ATM_Settings.showInterruptBar then
+            ShowBannerMessage(string.format(L[lang].interrupt, ShortenName(sourceName or "Spieler", 12), interruptedSpell), 1.0, 0.5, 0.0, 3.0)
+            if not ATM_Settings.disableAllBars and ATM_Settings.showInterruptBar then
                 UpdateInterruptDisplay(sourceName or "Spieler", interruptedSpell)
             end
         end
@@ -1159,22 +1276,21 @@ frame:SetScript("OnEvent", function(self, event, ...)
 end)
 
 -------------------------------------------------------------------------------
--- OPTIONS PANEL (GUI) - v1.77
+-- OPTIONS PANEL (GUI) - v1.78
 -------------------------------------------------------------------------------
 local optionsPanel = CreateFrame("Frame", "AutoTankMarkerOptionsPanel", UIParent)
 optionsPanel.name = "AutoTankMarker"
 
 local title = optionsPanel:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
 title:SetPoint("TOPLEFT", 16, -16)
-title:SetText("v1.77 ©cHiMeRa83")
+title:SetText("v1.78 ©cHiMeRa83")
 
--- ScrollFrame Erstellung für das Einstellungsmenü
 local scrollFrame = CreateFrame("ScrollFrame", "ATMOptionsScrollFrame", optionsPanel, "UIPanelScrollFrameTemplate")
 scrollFrame:SetPoint("TOPLEFT", 10, -45)
 scrollFrame:SetPoint("BOTTOMRIGHT", -30, 10)
 
 local scrollChild = CreateFrame("Frame", "ATMOptionsScrollChild", scrollFrame)
-scrollChild:SetSize(560, 960)
+scrollChild:SetSize(560, 1020)
 scrollFrame:SetScrollChild(scrollChild)
 
 local function CreateCheckbox(name, labelText, yOffset, settingKey, tooltipText)
@@ -1194,24 +1310,24 @@ local function CreateCheckbox(name, labelText, yOffset, settingKey, tooltipText)
     return cb
 end
 
-CreateCheckbox("ATM_CB_AggroAlert", "Aggro-Warnung, Chat-Meldung & Bildschirm-Blitz", -10, "aggroAlert", "Schlägt Alarm, sendet Gruppennachrichten und lässt den Bildschirm rot aufleuchten, wenn du Aggro ziehst.")
-CreateCheckbox("ATM_CB_ThreatBar", "Tank-Aggro Ampel-Leiste im Kampf anzeigen", -32, "showTankThreatBar", "Zeigt eine Statusleiste an, die den Aggro-Status des Tanks im Kampf überwacht.")
-CreateCheckbox("ATM_CB_CDMonitor", "Tank Def-CD Statusleiste anzeigen", -54, "showCDMonitor", "Zeigt eine eigene Leiste für aktive Defensiv-Cooldowns des Tanks an.")
-CreateCheckbox("ATM_CB_IntBar", "Interrupt-Statusleiste anzeigen", -76, "showInterruptBar", "Zeigt bei erfolgreichen Kicks/Interrupts eine Leiste mit Namen und Zauber an.")
-CreateCheckbox("ATM_CB_DrinkBar", "Trink-Statusleiste anzeigen", -98, "showDrinkBar", "Zeigt eine eigene Leiste an, wenn Gruppenmitglieder gerade Wasser trinken.")
-CreateCheckbox("ATM_CB_FoodBar", "Ess-Statusleiste anzeigen", -120, "showFoodBar", "Zeigt eine eigene Leiste an, wenn Gruppenmitglieder gerade essen.")
-CreateCheckbox("ATM_CB_TankSwap", "Tank-Wechsel (Taunt-Swap) Ansage", -142, "showTankSwap", "Informiert dich per Banner, wenn ein Tank erfolgreich spottet.")
-CreateCheckbox("ATM_CB_Interrupt", "Interrupt & CC-Tracker aktivieren", -164, "showInterrupt", "Überwacht Gruppen-Interrupts und gibt Sound-Warnungen aus.")
-CreateCheckbox("ATM_CB_ManaWhisper", "Flüstern bei < 15% Mana an Tank", -186, "manaWhisper", "Sendet automatisch einen Flüsterton an den Tank, wenn dein Mana unter 15% fällt.")
-CreateCheckbox("ATM_CB_DrinkWhisper", "Flüstern an Tank wenn du trinkst", -208, "drinkWhisper", "Teilt dem Tank per Whisper mit, dass du gerade am Trinken bist.")
-CreateCheckbox("ATM_CB_TankHealth", "Warnung wenn Tank unter 25% Leben fällt", -230, "tankHealthAlert", "Warnt dich akustisch und visuell, wenn das Leben des Tanks unter 25% sinkt.")
-CreateCheckbox("ATM_CB_TankDeath", "Sound & Meldung wenn Tank stirbt", -252, "tankDeathSound", "Spielt einen Sound ab und zeigt ein Banner, falls der zugewiesene Tank stirbt.")
-CreateCheckbox("ATM_CB_TankDef", "Meldung wenn Tank Defensiv-CDs zündet", -274, "tankDefAlert", "Gibt eine Meldung aus, sobald der Tank Schutzfähigkeiten einsetzt.")
-CreateCheckbox("ATM_CB_TauntAlert", "Warnung wenn Spott des Tanks verfehlt", -296, "tauntAlert", "Warnt dich, wenn ein Spott des Tanks vom Gegner verfehlt/widerstanden wird.")
+CreateCheckbox("ATM_CB_DisableAll", "|cffff2222ALLE Leisten komplett ausblenden (Master-Switch)|r", -10, "disableAllBars", "Versteckt alle Statusleisten (Aggro, CDs, Interrupt, Trinken, Essen) sofort.")
+CreateCheckbox("ATM_CB_AggroAlert", "Aggro-Warnung, Chat-Meldung & Bildschirm-Blitz", -32, "aggroAlert", "Schlägt Alarm, sendet Gruppennachrichten und lässt den Bildschirm rot aufleuchten, wenn du Aggro ziehst.")
+CreateCheckbox("ATM_CB_ThreatBar", "Tank-Aggro Ampel-Leiste im Kampf anzeigen", -54, "showTankThreatBar", "Zeigt eine Statusleiste an, die den Aggro-Status des Tanks im Kampf überwacht.")
+CreateCheckbox("ATM_CB_CDMonitor", "Tank Def-CD Statusleiste anzeigen", -76, "showCDMonitor", "Zeigt eine eigene Leiste für aktive Defensiv-Cooldowns des Tanks an.")
+CreateCheckbox("ATM_CB_IntBar", "Interrupt-Statusleiste anzeigen", -98, "showInterruptBar", "Zeigt bei erfolgreichen Kicks/Interrupts eine Leiste mit Namen und Zauber an.")
+CreateCheckbox("ATM_CB_DrinkBar", "Trink-Statusleiste anzeigen", -120, "showDrinkBar", "Zeigt eine eigene Leiste an, wenn Gruppenmitglieder gerade Wasser trinken.")
+CreateCheckbox("ATM_CB_FoodBar", "Ess-Statusleiste anzeigen", -142, "showFoodBar", "Zeigt eine eigene Leiste an, wenn Gruppenmitglieder gerade essen.")
+CreateCheckbox("ATM_CB_TankSwap", "Tank-Wechsel (Taunt-Swap) Ansage", -164, "showTankSwap", "Informiert dich per Banner, wenn ein Tank erfolgreich spottet.")
+CreateCheckbox("ATM_CB_Interrupt", "Interrupt & CC-Tracker aktivieren", -186, "showInterrupt", "Überwacht Gruppen-Interrupts und gibt Sound-Warnungen aus.")
+CreateCheckbox("ATM_CB_ManaWhisper", "Flüstern bei < 15% Mana an Tank", -208, "manaWhisper", "Sendet automatisch einen Flüsterton an den Tank, wenn dein Mana unter 15% fällt.")
+CreateCheckbox("ATM_CB_DrinkWhisper", "Flüstern an Tank wenn du trinkst", -230, "drinkWhisper", "Teilt dem Tank per Whisper mit, dass du gerade am Trinken bist.")
+CreateCheckbox("ATM_CB_TankHealth", "Warnung wenn Tank unter 25% Leben fällt", -252, "tankHealthAlert", "Warnt dich akustisch und visuell, wenn das Leben des Tanks unter 25% sinkt.")
+CreateCheckbox("ATM_CB_TankDeath", "Sound & Meldung wenn Tank stirbt", -274, "tankDeathSound", "Spielt einen Sound ab und zeigt ein Banner, falls der zugewiesene Tank stirbt.")
+CreateCheckbox("ATM_CB_TankDef", "Meldung wenn Tank Defensiv-CDs zündet", -296, "tankDefAlert", "Gibt eine Meldung aus, sobald der Tank Schutzfähigkeiten einsetzt.")
+CreateCheckbox("ATM_CB_TauntAlert", "Warnung wenn Spott des Tanks verfehlt", -318, "tauntAlert", "Warnt dich, wenn ein Spott des Tanks vom Gegner verfehlt/widerstanden wird.")
 
--- SLIDER: Gemeinsame Leisten-Breite (bis 800px) & Höhe
 local sliderThreatW = CreateFrame("Slider", "ATMSliderThreatW", scrollChild, "OptionsSliderTemplate")
-sliderThreatW:SetPoint("TOPLEFT", 20, -345)
+sliderThreatW:SetPoint("TOPLEFT", 20, -370)
 sliderThreatW:SetMinMaxValues(150, 800)
 sliderThreatW:SetValueStep(10)
 _G[sliderThreatW:GetName() .. "Low"]:SetText("150")
@@ -1223,16 +1339,9 @@ sliderThreatW:SetScript("OnValueChanged", function(self, value)
     UpdateBarStyles()
     _G[self:GetName() .. "Text"]:SetText("Leisten Breite: " .. value)
 end)
-sliderThreatW:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    GameTooltip:SetText("Leisten Breite", 1, 0.8, 0, 1, true)
-    GameTooltip:AddLine("Legt die horizontale Breite für ALLE Leisten gemeinsam fest (bis zu 800px für Raids).", 0.9, 0.9, 0.9, true)
-    GameTooltip:Show()
-end)
-sliderThreatW:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
 
 local sliderThreatH = CreateFrame("Slider", "ATMSliderThreatH", scrollChild, "OptionsSliderTemplate")
-sliderThreatH:SetPoint("TOPLEFT", 260, -345)
+sliderThreatH:SetPoint("TOPLEFT", 260, -370)
 sliderThreatH:SetMinMaxValues(10, 50)
 sliderThreatH:SetValueStep(2)
 _G[sliderThreatH:GetName() .. "Low"]:SetText("10")
@@ -1244,17 +1353,9 @@ sliderThreatH:SetScript("OnValueChanged", function(self, value)
     UpdateBarStyles()
     _G[self:GetName() .. "Text"]:SetText("Leisten Höhe: " .. value)
 end)
-sliderThreatH:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    GameTooltip:SetText("Leisten Höhe", 1, 0.8, 0, 1, true)
-    GameTooltip:AddLine("Legt die vertikale Höhe für ALLE Leisten gemeinsam fest.", 0.9, 0.9, 0.9, true)
-    GameTooltip:Show()
-end)
-sliderThreatH:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
 
--- SLIDER: Schriftgröße & Minimap-Position
 local sliderFont = CreateFrame("Slider", "ATMSliderFont", scrollChild, "OptionsSliderTemplate")
-sliderFont:SetPoint("TOPLEFT", 20, -405)
+sliderFont:SetPoint("TOPLEFT", 20, -430)
 sliderFont:SetMinMaxValues(10, 24)
 sliderFont:SetValueStep(1)
 _G[sliderFont:GetName() .. "Low"]:SetText("10")
@@ -1266,16 +1367,9 @@ sliderFont:SetScript("OnValueChanged", function(self, value)
     UpdateBarStyles()
     _G[self:GetName() .. "Text"]:SetText("Leisten Schriftgröße: " .. value)
 end)
-sliderFont:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    GameTooltip:SetText("Leisten Schriftgröße", 1, 0.8, 0, 1, true)
-    GameTooltip:AddLine("Passt die Schriftgröße aller Leistentexte gemeinsam an.", 0.9, 0.9, 0.9, true)
-    GameTooltip:Show()
-end)
-sliderFont:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
 
 local sliderMinimapAngle = CreateFrame("Slider", "ATMSliderMinimapAngle", scrollChild, "OptionsSliderTemplate")
-sliderMinimapAngle:SetPoint("TOPLEFT", 260, -405)
+sliderMinimapAngle:SetPoint("TOPLEFT", 260, -430)
 sliderMinimapAngle:SetMinMaxValues(0, 360)
 sliderMinimapAngle:SetValueStep(5)
 _G[sliderMinimapAngle:GetName() .. "Low"]:SetText("0°")
@@ -1287,23 +1381,15 @@ sliderMinimapAngle:SetScript("OnValueChanged", function(self, value)
     UpdateMinimapButtonPosition(value)
     _G[self:GetName() .. "Text"]:SetText("Minimap-Position: " .. value .. "°")
 end)
-sliderMinimapAngle:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    GameTooltip:SetText("Minimap-Position", 1, 0.8, 0, 1, true)
-    GameTooltip:AddLine("Verschiebt den ATM Minimap-Button im Kreis um die Minimap (0–360°).", 0.9, 0.9, 0.9, true)
-    GameTooltip:Show()
-end)
-sliderMinimapAngle:SetScript("OnLeave", function(self) GameTooltip:Hide() end)
 
--- BUTTONS & EXTRAS UNTEN
 local btnTest = CreateFrame("Button", "ATM_Btn_RunTest", scrollChild, "UIPanelButtonTemplate")
-btnTest:SetPoint("TOPLEFT", 260, -465)
+btnTest:SetPoint("TOPLEFT", 260, -490)
 btnTest:SetSize(160, 24)
 btnTest:SetText("Testmodus starten")
 btnTest:SetScript("OnClick", function() RunTestMode() end)
 
 local cbMove = CreateFrame("CheckButton", "ATM_CB_MoveThreatBar", scrollChild, "InterfaceOptionsCheckButtonTemplate")
-cbMove:SetPoint("TOPLEFT", 16, -465)
+cbMove:SetPoint("TOPLEFT", 16, -490)
 _G[cbMove:GetName() .. "Text"]:SetText("Alle Elemente verschiebbar machen")
 cbMove:SetScript("OnClick", function(self)
     isUnlockedForMoving = self:GetChecked()
@@ -1343,7 +1429,7 @@ cbMove:SetScript("OnClick", function(self)
 end)
 
 local btnResetPos = CreateFrame("Button", "ATM_Btn_ResetPos", scrollChild, "UIPanelButtonTemplate")
-btnResetPos:SetPoint("TOPLEFT", 16, -505)
+btnResetPos:SetPoint("TOPLEFT", 16, -530)
 btnResetPos:SetSize(160, 22)
 btnResetPos:SetText("Positionen zurücksetzen")
 btnResetPos:SetScript("OnClick", function()
@@ -1357,18 +1443,17 @@ btnResetPos:SetScript("OnClick", function()
     DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM]|r Alle Positionen zurückgesetzt.")
 end)
 
--- SPRACH-EINSTELLUNG
 local langHeader = scrollChild:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-langHeader:SetPoint("TOPLEFT", 320, -505)
+langHeader:SetPoint("TOPLEFT", 320, -530)
 langHeader:SetText("Sprache:")
 
 local cbDE = CreateFrame("CheckButton", "ATM_CB_LangDE", scrollChild, "InterfaceOptionsCheckButtonTemplate")
-cbDE:SetPoint("TOPLEFT", 310, -525)
+cbDE:SetPoint("TOPLEFT", 310, -550)
 _G[cbDE:GetName() .. "Text"]:SetText("DE")
 _G[cbDE:GetName() .. "Text"]:SetPoint("LEFT", cbDE, "RIGHT", 2, 0)
 
 local cbEN = CreateFrame("CheckButton", "ATM_CB_LangEN", scrollChild, "InterfaceOptionsCheckButtonTemplate")
-cbEN:SetPoint("TOPLEFT", 430, -525)
+cbEN:SetPoint("TOPLEFT", 430, -550)
 _G[cbEN:GetName() .. "Text"]:SetText("EN")
 _G[cbEN:GetName() .. "Text"]:SetPoint("LEFT", cbEN, "RIGHT", 2, 0)
 
@@ -1384,7 +1469,6 @@ cbEN:SetScript("OnClick", function(self)
     cbEN:SetChecked(true)
 end)
 
--- RECHTE SPALTE: DROPDOWNS IM SCROLLCHILD (Icons, Skins & Sounds)
 local iconHeader = scrollChild:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
 iconHeader:SetPoint("TOPLEFT", 320, -10)
 iconHeader:SetText("Tank-Symbol:")
@@ -1573,6 +1657,6 @@ SlashCmdList["AUTOTANK"] = function(msg)
         end
     else
         FindAndMarkTank()
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM v1.77]|r Tank-Suche ausgeführt. Tippe |cffffd100/atm config|r für Einstellungen.")
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ff00[ATM v1.78]|r Tank-Suche ausgeführt. Tippe |cffffd100/atm config|r für Einstellungen.")
     end
 end
