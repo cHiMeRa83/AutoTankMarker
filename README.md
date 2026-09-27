@@ -43,13 +43,20 @@ AutoTankMarker (ATM) erleichtert Heilern die Arbeit in Dungeons und Raids enorm.
 
 ---
 
-## ✨ Was ist neu in v1.77?
+# AutoTankMarker (ATM) v1.78
 
-* **XXL-Warn-Icons (30x30):** Alle Warnmeldungen und Banner nutzen nun hochauflösende 30x30-Icons für eine perfekte visuelle Lesbarkeit im Eifer des Gefechts.
-* **Erweiterte Aggro- & Spott-Erkennung:** Zieht ein DD/Heiler Aggro, wird direkt der genaue Name des angreifenden Gegners im Banner angezeigt. Spott-Fehlschläge und Tank-Wechsel (Taunt-Swaps) zeigen nun den Tank, den Zauber und das Ziel an.
-* **Vollständiges 9-Skin-Design-System:** Passe alle Leisten an deinen UI-Stil an (wähle aus Neon Cyber, Modern Dark, Klassisch, Gilden-Gold, Blutrot und mehr).
-* **Vollständig verschiebbar:** Alle Leisten, der Warnbalken und der Minimap-Button lassen sich frei im UI positionieren (freischaltbar über die Optionen).
-* **Stabilität & Performance:** Code-Optimierungen für fehlerfreie Ausführung und minimale
+### 🚀 Was ist neu in V1.78?
+
+* **Intelligente Marker-Logik:** Das AddOn prüft nun vor dem Setzen, ob der Tank bereits ein Raid-Symbol hat. Das verhindert störendes „Marker-Pingpong“ und greift nicht mehr in manuelle Markierungen der Raid-Leitung ein.
+* **Präzise Food & Drink Erkennung:** Die Statusleisten für Essen und Trinken wurden komplett überarbeitet. Sie erkennen nun exakt per Buff-Namen und Spell-IDs, wer tatsächlich Nahrung/Wasser zu sich nimmt – Fehlanzeigen beim eigenen Charakter oder nach Kämpfen wurden behoben.
+* **Erweiterter Skin-Support:** Das Design-System wurde auf insgesamt 14 verschiedene HUD-Skins (von Neon Cyber bis Retro Arcade) ausgebaut.
+* **Vollständige UI-Verschiebbarkeit:** Alle Leisten (Aggro, CDs, Interrupt, Food, Drink, Warnbanner) lassen sich über die Optionen unkompliziert entsperren und frei auf dem Bildschirm per Drag & Drop positionieren.
+
+### 🐛 Bug Fixes & Optimierungen
+
+* **LUA-Syntaxfehler behoben:** Ein Fehler bei den internen Slash-Commands (`/atm`) wurde korrigiert, wodurch das AddOn nun absolut fehlerfrei lädt.
+* **Leistungsoptimierung:** Die Event-Abfragen im Hintergrund (`OnUpdate` und Combat-Log-Listener) wurden weiter stabilisiert, um Performance-Einbrüche im Raid zu vermeiden.
+* **Sicherheitsprüfungen:** Verbesserte Gruppen- und Instanzabfragen, damit Warnungen und Leisten außerhalb von Instanzen (Dungeons/Raids) sauber stummgeschaltet bleiben.
 ---
 
 ## 🛠️ Befehle & Bedienung
