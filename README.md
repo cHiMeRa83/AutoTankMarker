@@ -1,11 +1,11 @@
 # 🛡️ AutoTankMarker (ATM)
 
-![Version](https://img.shields.io/badge/Version-v1.77-blue.svg)
+![Version](https://img.shields.io/badge/Version-v1.78-blue.svg)
 ![WoW Version](https://img.shields.io/badge/WoW-3.3.5a-orange.svg)
 
 > **Ein unverzichtbares Utility-Tool für Heiler in World of Warcraft: Wrath of the Lich King (Patch 3.3.5a)**
 
-[![Download Latest Release](https://img.shields.io/badge/📥_Download-Neueste_Version_(v1.77)-brightgreen?style=for-the-badge&logo=github)](https://github.com/cHiMeRa83/AutoTankMarker/releases/latest)
+[![Download Latest Release](https://img.shields.io/badge/📥_Download-Neueste_Version_(v1.78)-brightgreen?style=for-the-badge&logo=github)](https://github.com/cHiMeRa83/AutoTankMarker/releases/latest)
 
 ---
 
@@ -17,7 +17,7 @@ AutoTankMarker (ATM) erleichtert Heilern die Arbeit in Dungeons und Raids enorm.
 
 * 🎯 **Automatische Tank-Erkennung & Markierung:**
   * Erkennt Tanks anhand von Gruppenrollen, Klassen und aktiven Haltungen/Auren (*Verteidigungshaltung, Zorn des Gerechten, Bärenform, Frostpräsenz*).
-  * Markiert den Tank automatisch mit einem wählbaren Zielsymbol (Standard: Blaues Quadrat).
+  * Markiert den Tank automatisch mit einem wählbaren Zielsymbol (Standard: Blaues Quadrat) – dank intelligenter Sicherheitsprüfung nur, wenn das Ziel noch kein Symbol besitzt.
 
 * 📊 **Dynamische Tank-Aggro % Leiste:**
   * Zeigt die prozentuale Bedrohung des Tanks in Echtzeit an (inklusive intelligentem Dungeon-Fallback).
@@ -45,7 +45,7 @@ AutoTankMarker (ATM) erleichtert Heilern die Arbeit in Dungeons und Raids enorm.
 
 # AutoTankMarker (ATM) v1.78
 
-### 🚀 Was ist neu in V1.78?
+### 🚀 Was ist neu in v1.78?
 
 * **Intelligente Marker-Logik:** Das AddOn prüft nun vor dem Setzen, ob der Tank bereits ein Raid-Symbol hat. Das verhindert störendes „Marker-Pingpong“ und greift nicht mehr in manuelle Markierungen der Raid-Leitung ein.
 * **Präzise Food & Drink Erkennung:** Die Statusleisten für Essen und Trinken wurden komplett überarbeitet. Sie erkennen nun exakt per Buff-Namen und Spell-IDs, wer tatsächlich Nahrung/Wasser zu sich nimmt – Fehlanzeigen beim eigenen Charakter oder nach Kämpfen wurden behoben.
@@ -57,6 +57,7 @@ AutoTankMarker (ATM) erleichtert Heilern die Arbeit in Dungeons und Raids enorm.
 * **LUA-Syntaxfehler behoben:** Ein Fehler bei den internen Slash-Commands (`/atm`) wurde korrigiert, wodurch das AddOn nun absolut fehlerfrei lädt.
 * **Leistungsoptimierung:** Die Event-Abfragen im Hintergrund (`OnUpdate` und Combat-Log-Listener) wurden weiter stabilisiert, um Performance-Einbrüche im Raid zu vermeiden.
 * **Sicherheitsprüfungen:** Verbesserte Gruppen- und Instanzabfragen, damit Warnungen und Leisten außerhalb von Instanzen (Dungeons/Raids) sauber stummgeschaltet bleiben.
+
 ---
 
 ## 🛠️ Befehle & Bedienung
@@ -84,7 +85,7 @@ AutoTankMarker (ATM) erleichtert Heilern die Arbeit in Dungeons und Raids enorm.
 
 ## 💻 Installation
 
-1. [Klicke hier, um Version v1.77 herunterzuladen](https://github.com/cHiMeRa83/AutoTankMarker/releases/latest).
+1. [Klicke hier, um Version v1.78 herunterzuladen](https://github.com/cHiMeRa83/AutoTankMarker/releases/latest).
 2. Entpacke den heruntergeladenen Ordner in dein WoW-Verzeichnis:
    `World of Warcraft\Interface\AddOns\`
 3. Stelle sicher, dass der Ordnerpfad wie folgt aussieht:
